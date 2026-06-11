@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>World Cup Pool Dashboard</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">2026 World Cup Pool</p>
+        <h1>Pool Control Room</h1>
+      </div>
+      <div class="header-actions">
+        <button class="icon-button" id="export-json" type="button" title="Export JSON">JSON</button>
+        <button class="icon-button" id="export-score-csv" type="button" title="Export leaderboard CSV">CSV</button>
+        <label class="icon-button file-button" title="Import JSON">
+          Import
+          <input id="import-json" type="file" accept="application/json,.json" />
+        </label>
+        <button class="icon-button danger" id="reset-state" type="button" title="Reset saved results">Reset</button>
+      </div>
+    </header>
+
+    <main class="shell">
+      <aside class="leaderboard-panel">
+        <div class="panel-title">
+          <span>Leaderboard</span>
+          <small>75% / 25%</small>
+        </div>
+        <div id="leaderboard"></div>
+        <div id="owner-detail" class="owner-detail"></div>
+      </aside>
+
+      <section class="workbench">
+        <section class="status-strip" id="status-strip"></section>
+
+        <nav class="tabs" aria-label="Dashboard sections">
+          <button class="tab active" data-tab="matches" type="button">Matches</button>
+          <button class="tab" data-tab="awards" type="button">Awards</button>
+          <button class="tab" data-tab="groups" type="button">Groups</button>
+          <button class="tab" data-tab="draft" type="button">Draft</button>
+          <button class="tab" data-tab="data" type="button">Data</button>
+        </nav>
+
+        <section class="tab-panel active" id="tab-matches">
+          <div class="match-toolbar">
+            <input id="search" type="search" placeholder="Search team, owner, venue" />
+            <select id="owner-filter" aria-label="Owner filter"></select>
+            <select id="group-filter" aria-label="Group filter"></select>
+            <select id="status-filter" aria-label="Status filter">
+              <option value="all">All matches</option>
+              <option value="today">Today</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="final">Final</option>
+              <option value="open">Needs score</option>
+            </select>
+          </div>
+
+          <div class="match-layout">
+            <div>
+              <section class="spotlight" id="spotlight"></section>
+              <section id="match-list" class="match-list"></section>
+            </div>
+            <aside class="impact-panel" id="impact-panel"></aside>
+          </div>
+        </section>
+
+        <section class="tab-panel" id="tab-awards">
+          <div id="awards-panel"></div>
+        </section>
+
+        <section class="tab-panel" id="tab-groups">
+          <div id="groups-panel"></div>
+        </section>
+
+        <section class="tab-panel" id="tab-draft">
+          <div id="draft-panel"></div>
+        </section>
+
+        <section class="tab-panel" id="tab-data">
+          <div id="data-panel"></div>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
