@@ -1,0 +1,8 @@
+{
+  "sources": [
+    {
+      "type": "google-sheet-csv",
+      "url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTDvAZcUzudMTWYH5kfzoByxqte0FfSSQBhDen2stoBA2qyqbIRveAzwmp903gBmw/pub?gid=1553990171&single=true&output=csv"
+    }
+  ]
+}
