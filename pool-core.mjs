@@ -373,6 +373,17 @@ export function getAllMatches(state = createEmptyState()) {
   });
 }
 
+export function getMatchesByDate(state = createEmptyState()) {
+  const groupsByDate = new Map();
+  for (const match of getAllMatches(state)) {
+    const date = match.date || "";
+    if (!groupsByDate.has(date)) groupsByDate.set(date, []);
+    groupsByDate.get(date).push(match);
+  }
+
+  return [...groupsByDate.entries()].map(([date, matches]) => ({ date, matches }));
+}
+
 export function isCompletedMatch(match) {
   return match.status === "final" && hasScore(match.homeScore) && hasScore(match.awayScore);
 }

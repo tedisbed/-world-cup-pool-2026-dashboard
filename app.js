@@ -9,6 +9,7 @@ import {
   getGroupStandings,
   getMatchImpact,
   getMatchWinner,
+  getMatchesByDate,
   getOwnerForTeam,
   getPlayerGoalTotals,
   getQualifiedTeams,
@@ -480,7 +481,6 @@ function matchCard(match) {
         <div class="readonly-score">${scoreValue(match.homeScore) || "-"}<span>:</span>${scoreValue(match.awayScore) || "-"}</div>
         ${playerGoalLines.length ? `<div class="muted">${playerGoalLines.map(escapeHtml).join(" + ")}</div>` : `<div class="muted">No selected-player goals entered</div>`}
         <div class="result-options">
-          <button class="icon-button" type="button" data-action="edit-score" data-match-id="${escapeHtml(match.id)}">Update</button>
           ${isCustom ? `<button class="icon-button danger" type="button" data-action="remove-custom" data-match-id="${escapeHtml(match.id)}">Remove</button>` : ""}
         </div>
       </div>
@@ -508,9 +508,7 @@ function renderUpdateScore() {
       <label class="match-picker">
         <span class="muted">Match</span>
         <select data-action="pick-update-match" aria-label="Match to update">
-          ${matches
-            .map((row) => `<option value="${escapeHtml(row.id)}" ${row.id === match.id ? "selected" : ""}>${escapeHtml(formatMatchOption(row))}</option>`)
-            .join("")}
+          ${matchDayOptions()}
         </select>
       </label>
 
@@ -770,13 +768,6 @@ function handleClick(event) {
     const id = event.target.closest("[data-match-id]").dataset.matchId;
     state.customMatches = state.customMatches.filter((match) => match.id !== id);
     saveAndRender();
-    return;
-  }
-
-  if (action === "edit-score") {
-    selectedMatchId = event.target.closest("[data-match-id]").dataset.matchId;
-    activeTab = "update";
-    document.querySelector('[data-tab="update"]').click();
     return;
   }
 
@@ -1114,7 +1105,19 @@ function matchPlayerGoals(matchId) {
 
 function formatMatchOption(match) {
   const group = match.group ? `Group ${match.group}` : stageLabels[match.stage] ?? match.stage;
-  return `${formatDate(match.date)} - ${match.home} vs ${match.away} - ${group} - ${match.venue || "TBD"}`;
+  return `${match.home} vs ${match.away} - ${group} - ${match.venue || "TBD"}`;
+}
+
+function matchDayOptions() {
+  return getMatchesByDate(state)
+    .map(
+      ({ date, matches }) => `
+        <optgroup label="${escapeHtml(formatDate(date))}">
+          ${matches.map((match) => `<option value="${escapeHtml(match.id)}" ${match.id === selectedMatchId ? "selected" : ""}>${escapeHtml(formatMatchOption(match))}</option>`).join("")}
+        </optgroup>
+      `,
+    )
+    .join("");
 }
 
 function scoreValue(value) {
