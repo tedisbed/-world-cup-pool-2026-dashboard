@@ -586,6 +586,79 @@ export function calculateScores(inputState = createEmptyState()) {
   };
 }
 
+export function getRecentPointEvents(inputState = createEmptyState(), limit = 20) {
+  const state = normalizeState(inputState);
+  const matchesById = new Map(getAllMatches(state).map((match) => [match.id, match]));
+  return calculateScores(state).ownerTotals
+    .flatMap((row) =>
+      row.details.map((detail) => {
+        const match = matchesById.get(detail.subject);
+        return {
+          owner: row.owner,
+          points: detail.points,
+          reason: detail.reason,
+          category: detail.category,
+          subject: detail.subject,
+          date: match?.date ?? "",
+          match: match ? `${match.home} vs ${match.away}` : "",
+        };
+      }),
+    )
+    .sort((a, b) => String(b.date).localeCompare(String(a.date)) || Math.abs(b.points) - Math.abs(a.points) || a.owner.localeCompare(b.owner))
+    .slice(0, limit);
+}
+
+export function getOwnerOpportunityRows(inputState = createEmptyState()) {
+  const state = normalizeState(inputState);
+  const scoreRows = new Map(calculateScores(state).ownerTotals.map((row) => [row.owner, row.score]));
+  const rows = new Map(
+    owners.map((owner) => [
+      owner,
+      {
+        owner,
+        current: scoreRows.get(owner) ?? 0,
+        teamOpportunity: 0,
+        playerOpportunity: 0,
+        remainingVisible: 0,
+        maxVisible: scoreRows.get(owner) ?? 0,
+      },
+    ]),
+  );
+  const add = (owner, field, points) => {
+    if (!owner || !rows.has(owner) || !Number.isFinite(points) || points <= 0) return;
+    rows.get(owner)[field] += points;
+  };
+
+  for (const match of getAllMatches(state)) {
+    if (isCompletedMatch(match)) continue;
+    const teamPoints = maxTeamOpportunityForMatch(match);
+    add(getOwnerForTeam(match.home), "teamOpportunity", teamPoints);
+    add(getOwnerForTeam(match.away), "teamOpportunity", teamPoints);
+
+    for (const player of selectedPlayers.filter((entry) => entry.team === match.home || entry.team === match.away)) {
+      add(
+        player.owner,
+        "playerOpportunity",
+        rules.individualAwards.selectedPlayerGoal + rules.individualAwards.selectedPlayersTeamWins,
+      );
+    }
+  }
+
+  return [...rows.values()]
+    .map((row) => ({
+      ...row,
+      remainingVisible: row.teamOpportunity + row.playerOpportunity,
+      maxVisible: row.current + row.teamOpportunity + row.playerOpportunity,
+    }))
+    .sort((a, b) => b.maxVisible - a.maxVisible || b.remainingVisible - a.remainingVisible || b.current - a.current || a.owner.localeCompare(b.owner));
+}
+
+function maxTeamOpportunityForMatch(match) {
+  if (match.stage === "group") return rules.groupStage.win + rules.allEvents.winByTwo;
+  const stagePoints = match.stage === "final" ? rules.knockoutStage.final : rules.knockoutStage[match.stage] || 0;
+  return stagePoints + rules.allEvents.winByTwo;
+}
+
 function scoreGroupBonuses(state, add) {
   const standings = getGroupStandings(state);
 

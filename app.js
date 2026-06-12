@@ -12,11 +12,13 @@ import {
   getMatchesByDate,
   getMatchesForDate,
   getOwnerForTeam,
+  getOwnerOpportunityRows,
   getPlayerGoalTotals,
   getQualifiedTeams,
   getSelectedPlayers,
   getTeam,
   getThirdPlaceTable,
+  getRecentPointEvents,
   isCompletedMatch,
   normalizeState,
   owners,
@@ -26,6 +28,8 @@ import {
 } from "./pool-core.mjs";
 
 const storageKey = "world-cup-pool-dashboard-v1";
+const adminStorageKey = "world-cup-pool-dashboard-admin-unlocked";
+const adminPassword = "Noah";
 const officialIds = new Set(fixtures.map((fixture) => fixture.id));
 const selectedPlayers = getSelectedPlayers();
 const ownerColors = {
@@ -40,6 +44,7 @@ const ownerColors = {
 };
 
 let state = loadState();
+let adminUnlocked = sessionStorage.getItem(adminStorageKey) === "true";
 let selectedMatchId = firstRelevantMatch()?.id ?? fixtures[0].id;
 let activeTab = "matches";
 let renderTimer = 0;
@@ -53,6 +58,7 @@ const filters = {
 const dom = {
   leaderboard: document.getElementById("leaderboard"),
   todayPanel: document.getElementById("today-panel"),
+  pulsePanel: document.getElementById("pulse-panel"),
   statusStrip: document.getElementById("status-strip"),
   spotlight: document.getElementById("spotlight"),
   matchList: document.getElementById("match-list"),
@@ -135,6 +141,7 @@ function render() {
   renderLeaderboard(result);
   renderStatusStrip(result);
   renderToday(result);
+  renderPulse();
   renderSpotlight();
   renderMatches();
   renderUpdateScore();
@@ -201,6 +208,35 @@ function renderToday(result) {
           ? matches.map((match) => todayMatchCard(match, result)).join("")
           : `<div class="empty-state">No matches are scheduled for today.</div>`
       }
+    </div>
+  `;
+}
+
+function renderPulse() {
+  const events = getRecentPointEvents(state, 18);
+  const opportunities = getOwnerOpportunityRows(state);
+
+  dom.pulsePanel.innerHTML = `
+    <div class="pulse-grid">
+      <section class="card">
+        <div class="section-title">
+          <span>Recent Points</span>
+          <small>${events.length ? `${events.length} latest` : "No points yet"}</small>
+        </div>
+        ${
+          events.length
+            ? `<ul class="event-feed">${events.map(pointEventItem).join("")}</ul>`
+            : `<div class="empty-state">No scored events yet.</div>`
+        }
+      </section>
+
+      <section class="card">
+        <div class="section-title">
+          <span>Visible Opportunity</span>
+          <small>Known fixtures only</small>
+        </div>
+        ${opportunityTable(opportunities)}
+      </section>
     </div>
   `;
 }
@@ -433,6 +469,7 @@ function renderDraft() {
 
 function renderData(result) {
   const serialized = JSON.stringify(state, null, 2);
+  const disabled = adminUnlocked ? "" : "disabled";
   dom.dataPanel.innerHTML = `
     <div class="data-grid">
       <section class="data-box">
@@ -448,27 +485,27 @@ function renderData(result) {
 
       <section class="data-box">
         <h3>Import</h3>
-        <textarea class="import-area" id="paste-json" placeholder="Paste exported JSON"></textarea>
+        <textarea class="import-area" id="paste-json" placeholder="Paste exported JSON" ${disabled}></textarea>
         <div class="knockout-form" style="margin-top:8px">
-          <button type="button" data-action="import-pasted-json">Import Pasted JSON</button>
-          <button type="button" data-action="load-demo">Load Sample Results</button>
+          <button type="button" data-action="import-pasted-json" ${disabled}>Import Pasted JSON</button>
+          <button type="button" data-action="load-demo" ${disabled}>Load Sample Results</button>
         </div>
       </section>
 
       <section class="data-box">
         <h3>Add Knockout Match</h3>
         <form class="knockout-form" id="knockout-form">
-          <select name="stage" aria-label="Stage">
+          <select name="stage" aria-label="Stage" ${disabled}>
             <option value="r32">Round of 32</option>
             <option value="r16">Round of 16</option>
             <option value="qf">Quarterfinal</option>
             <option value="sf">Semifinal</option>
             <option value="final">Final</option>
           </select>
-          <input name="date" type="date" value="2026-06-29" />
-          <select name="home" aria-label="Home team">${teamOptions()}</select>
-          <select name="away" aria-label="Away team">${teamOptions("Germany")}</select>
-          <button class="full-span" type="submit">Add Match Row</button>
+          <input name="date" type="date" value="2026-06-29" ${disabled} />
+          <select name="home" aria-label="Home team" ${disabled}>${teamOptions()}</select>
+          <select name="away" aria-label="Away team" ${disabled}>${teamOptions("Germany")}</select>
+          <button class="full-span" type="submit" ${disabled}>Add Match Row</button>
         </form>
       </section>
 
@@ -538,8 +575,10 @@ function renderUpdateScore() {
   }
   selectedMatchId = match.id;
   const selectedPlayerRows = selectedPlayersForMatch(match);
+  const disabled = adminUnlocked ? "" : "disabled";
 
   dom.updatePanel.innerHTML = `
+    ${adminGate()}
     <section class="card update-score-card">
       <div class="section-title">
         <span>Update Score</span>
@@ -559,12 +598,12 @@ function renderUpdateScore() {
       </div>
 
       <div class="result-options update-options">
-        <label class="check-label"><input data-match-id="${escapeHtml(match.id)}" data-field="status" type="checkbox" ${match.status === "final" ? "checked" : ""} /> Final</label>
+        <label class="check-label"><input data-match-id="${escapeHtml(match.id)}" data-field="status" type="checkbox" ${match.status === "final" ? "checked" : ""} ${disabled} /> Final</label>
         ${
           match.stage !== "group"
             ? `
-              <label class="check-label"><input data-match-id="${escapeHtml(match.id)}" data-field="wentToPens" type="checkbox" ${match.wentToPens ? "checked" : ""} /> Pens</label>
-              <select class="compact-select" data-match-id="${escapeHtml(match.id)}" data-field="penaltyWinner" aria-label="Penalty winner">
+              <label class="check-label"><input data-match-id="${escapeHtml(match.id)}" data-field="wentToPens" type="checkbox" ${match.wentToPens ? "checked" : ""} ${disabled} /> Pens</label>
+              <select class="compact-select" data-match-id="${escapeHtml(match.id)}" data-field="penaltyWinner" aria-label="Penalty winner" ${disabled}>
                 <option value="">PK winner</option>
                 <option value="${escapeHtml(match.home)}" ${match.penaltyWinner === match.home ? "selected" : ""}>${escapeHtml(match.home)}</option>
                 <option value="${escapeHtml(match.away)}" ${match.penaltyWinner === match.away ? "selected" : ""}>${escapeHtml(match.away)}</option>
@@ -653,31 +692,93 @@ function todayOpportunityLines(match) {
   return [...impact.possible, ...playerGoalLines];
 }
 
+function pointEventItem(event) {
+  const className = event.points < 0 ? "point-chip negative" : "point-chip";
+  const date = event.date ? formatDate(event.date) : event.category;
+  const context = event.match || event.category;
+  return `
+    <li>
+      <span class="${className}">${event.points > 0 ? "+" : ""}${event.points}</span>
+      <div>
+        <strong>${escapeHtml(event.owner)}</strong>
+        <span>${escapeHtml(event.reason)}</span>
+        <em>${escapeHtml(date)}${context ? ` + ${escapeHtml(context)}` : ""}</em>
+      </div>
+    </li>
+  `;
+}
+
+function opportunityTable(rows) {
+  return `
+    <div class="opportunity-table-wrap">
+      <table class="opportunity-table">
+        <thead>
+          <tr><th>Owner</th><th>Now</th><th>Teams</th><th>Players</th><th>Left</th><th>Max</th></tr>
+        </thead>
+        <tbody>
+          ${rows
+            .map(
+              (row) => `
+                <tr>
+                  <td><span class="owner-chip" style="--owner-color:${ownerColor(row.owner)}">${escapeHtml(row.owner)}</span></td>
+                  <td>${row.current}</td>
+                  <td>${row.teamOpportunity}</td>
+                  <td>${row.playerOpportunity}</td>
+                  <td>${row.remainingVisible}</td>
+                  <td><strong>${row.maxVisible}</strong></td>
+                </tr>
+              `,
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 function updateTeamPanel(match, side) {
   const team = match[side];
   const scoreField = side === "home" ? "homeScore" : "awayScore";
   const owner = getOwnerForTeam(team);
+  const disabled = adminUnlocked ? "" : "disabled";
   return `
     <section class="update-team">
       <div>
         <strong>${escapeHtml(team)}</strong>
         <div class="muted">${escapeHtml(side === "home" ? "Home" : "Away")} + <span class="owner-chip" style="--owner-color:${ownerColor(owner)}">${escapeHtml(owner || "Unowned")}</span></div>
       </div>
-      <input class="score-input" data-match-id="${escapeHtml(match.id)}" data-field="${scoreField}" type="number" min="0" step="1" value="${scoreValue(match[scoreField])}" aria-label="${escapeHtml(team)} score" />
+      <input class="score-input" data-match-id="${escapeHtml(match.id)}" data-field="${scoreField}" type="number" min="0" step="1" value="${scoreValue(match[scoreField])}" aria-label="${escapeHtml(team)} score" ${disabled} />
     </section>
   `;
 }
 
 function matchPlayerGoalRow(match, player) {
   const goals = matchPlayerGoals(match.id)[player.name] ?? 0;
+  const disabled = adminUnlocked ? "" : "disabled";
   return `
     <div class="player-row">
       <div>
         <strong>${escapeHtml(player.name)}</strong>
         <div class="muted">${escapeHtml(player.team)} + ${escapeHtml(player.owner)}</div>
       </div>
-      <input class="compact-input" data-match-id="${escapeHtml(match.id)}" data-match-player-goal="${escapeHtml(player.name)}" type="number" min="0" step="1" value="${goals}" aria-label="${escapeHtml(player.name)} goals in this match" />
+      <input class="compact-input" data-match-id="${escapeHtml(match.id)}" data-match-player-goal="${escapeHtml(player.name)}" type="number" min="0" step="1" value="${goals}" aria-label="${escapeHtml(player.name)} goals in this match" ${disabled} />
     </div>
+  `;
+}
+
+function adminGate() {
+  return `
+    <section class="card admin-gate ${adminUnlocked ? "unlocked" : ""}">
+      <div>
+        <div class="card-title">${adminUnlocked ? "Editing Unlocked" : "Editing Locked"}</div>
+        <div class="muted">${adminUnlocked ? "Score updates and data changes are enabled in this browser session." : "Enter the admin key to change scores, awards, imports, or match rows."}</div>
+      </div>
+      ${
+        adminUnlocked
+          ? `<button class="icon-button" type="button" data-action="lock-admin">Lock</button>`
+          : `<div class="admin-form"><input id="admin-key" type="password" autocomplete="current-password" placeholder="Admin key" aria-label="Admin key" /><button class="icon-button" type="button" data-action="unlock-admin">Unlock</button></div>`
+      }
+    </section>
   `;
 }
 
@@ -713,10 +814,11 @@ function playerGoalRow(player, playerGoalTotals) {
 
 function awardRow([key, label]) {
   const selected = state.awards[key] ?? "";
+  const disabled = adminUnlocked ? "" : "disabled";
   return `
     <label class="award-row">
       <strong>${escapeHtml(label)}</strong>
-      <select class="award-select" data-award="${escapeHtml(key)}">
+      <select class="award-select" data-award="${escapeHtml(key)}" ${disabled}>
         <option value="">Not set</option>
         <option value="Other" ${selected === "Other" ? "selected" : ""}>Other / unselected</option>
         ${selectedPlayers
@@ -865,6 +967,16 @@ function handleClick(event) {
   const action = event.target.closest("[data-action]")?.dataset.action;
   if (!action) return;
 
+  if (action === "unlock-admin") {
+    unlockAdmin();
+    return;
+  }
+
+  if (action === "lock-admin") {
+    lockAdmin();
+    return;
+  }
+
   if (action === "select-match") {
     const row = event.target.closest("[data-match-id]");
     selectedMatchId = row.dataset.matchId;
@@ -873,6 +985,7 @@ function handleClick(event) {
   }
 
   if (action === "remove-custom") {
+    if (!requireAdmin()) return;
     const id = event.target.closest("[data-match-id]").dataset.matchId;
     state.customMatches = state.customMatches.filter((match) => match.id !== id);
     saveAndRender();
@@ -883,8 +996,8 @@ function handleClick(event) {
   if (action === "export-score-csv") exportScoreCsv();
   if (action === "export-match-csv") exportMatchCsv();
   if (action === "copy-json") copyJson();
-  if (action === "import-pasted-json") importPastedJson();
-  if (action === "load-demo") loadDemoResults();
+  if (action === "import-pasted-json" && requireAdmin()) importPastedJson();
+  if (action === "load-demo" && requireAdmin()) loadDemoResults();
 }
 
 function handleChange(event) {
@@ -897,6 +1010,7 @@ function handleChange(event) {
   const matchId = event.target.dataset.matchId;
   const field = event.target.dataset.field;
   if (matchId && field) {
+    if (!requireAdmin()) return;
     const value = readFieldValue(event.target, field);
     updateMatch(matchId, { [field]: value });
     saveAndRender();
@@ -905,6 +1019,7 @@ function handleChange(event) {
 
   const matchPlayerGoal = event.target.dataset.matchPlayerGoal;
   if (matchId && matchPlayerGoal) {
+    if (!requireAdmin()) return;
     updateMatchPlayerGoal(matchId, matchPlayerGoal, event.target.value);
     saveAndRender();
     return;
@@ -912,6 +1027,7 @@ function handleChange(event) {
 
   const award = event.target.dataset.award;
   if (award) {
+    if (!requireAdmin()) return;
     state.awards[award] = event.target.value;
     saveAndRender();
   }
@@ -921,6 +1037,7 @@ function handleInput(event) {
   const matchId = event.target.dataset.matchId;
   const field = event.target.dataset.field;
   if (matchId && (field === "homeScore" || field === "awayScore")) {
+    if (!requireAdmin(false)) return;
     updateMatch(matchId, { [field]: event.target.value });
     saveState();
     scheduleRender();
@@ -929,6 +1046,7 @@ function handleInput(event) {
 
   const matchPlayerGoal = event.target.dataset.matchPlayerGoal;
   if (matchId && matchPlayerGoal) {
+    if (!requireAdmin(false)) return;
     updateMatchPlayerGoal(matchId, matchPlayerGoal, event.target.value);
     saveState();
     scheduleRender();
@@ -966,8 +1084,32 @@ function updateMatchPlayerGoal(matchId, playerName, value) {
   };
 }
 
+function unlockAdmin() {
+  const input = document.getElementById("admin-key");
+  if (input?.value === adminPassword) {
+    adminUnlocked = true;
+    sessionStorage.setItem(adminStorageKey, "true");
+    render();
+    return;
+  }
+  window.alert("Incorrect admin key.");
+}
+
+function lockAdmin() {
+  adminUnlocked = false;
+  sessionStorage.removeItem(adminStorageKey);
+  render();
+}
+
+function requireAdmin(showAlert = true) {
+  if (adminUnlocked) return true;
+  if (showAlert) window.alert("Enter the admin key on the Update Score tab before editing.");
+  return false;
+}
+
 function addKnockoutMatch(event) {
   event.preventDefault();
+  if (!requireAdmin()) return;
   const formData = new FormData(event.currentTarget);
   const home = String(formData.get("home"));
   const away = String(formData.get("away"));
@@ -1106,6 +1248,10 @@ function importPastedJson() {
 function importJsonFile(event) {
   const file = event.target.files?.[0];
   if (!file) return;
+  if (!requireAdmin()) {
+    event.target.value = "";
+    return;
+  }
   const reader = new FileReader();
   reader.onload = () => {
     try {
@@ -1120,6 +1266,7 @@ function importJsonFile(event) {
 }
 
 function resetState() {
+  if (!requireAdmin()) return;
   if (!window.confirm("Reset all saved results and awards in this browser?")) return;
   state = createEmptyState();
   selectedMatchId = firstRelevantMatch()?.id ?? fixtures[0].id;

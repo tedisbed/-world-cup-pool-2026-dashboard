@@ -465,6 +465,77 @@ h1 {
   color: var(--ink);
 }
 
+.pulse-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(420px, 1.1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.event-feed {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.event-feed li {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.event-feed li:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.event-feed strong,
+.event-feed span,
+.event-feed em {
+  display: block;
+}
+
+.event-feed span {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.event-feed em {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.35;
+}
+
+.opportunity-table-wrap {
+  overflow-x: auto;
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.opportunity-table {
+  min-width: 620px;
+  background: #fff;
+}
+
+.opportunity-table th,
+.opportunity-table td {
+  text-align: right;
+}
+
+.opportunity-table th:first-child,
+.opportunity-table td:first-child {
+  text-align: left;
+}
+
 .spotlight {
   margin-bottom: 12px;
   padding: 14px;
@@ -584,6 +655,45 @@ h1 {
 .update-score-card {
   display: grid;
   gap: 14px;
+}
+
+.admin-gate {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+  box-shadow: none;
+}
+
+.admin-gate.unlocked {
+  border-color: rgba(35, 134, 54, 0.35);
+  background: #f2fbf6;
+}
+
+.admin-form {
+  display: grid;
+  grid-template-columns: minmax(140px, 220px) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.admin-form input {
+  min-height: 38px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  padding: 8px 10px;
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled,
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .match-picker {
@@ -907,6 +1017,10 @@ th {
     grid-template-columns: 1fr;
   }
 
+  .pulse-grid {
+    grid-template-columns: 1fr;
+  }
+
   .today-columns {
     grid-template-columns: 1fr;
   }
@@ -949,7 +1063,9 @@ th {
   }
 
   .today-match-main,
-  .today-metrics {
+  .today-metrics,
+  .admin-gate,
+  .admin-form {
     grid-template-columns: 1fr;
   }
 
