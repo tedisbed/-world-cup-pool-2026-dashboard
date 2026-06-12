@@ -1,5 +1,4 @@
 import {
-  awardLabels,
   areAllGroupsComplete,
   calculateScores,
   createEmptyState,
@@ -9,11 +8,9 @@ import {
   getGroupStandings,
   getMatchImpact,
   getMatchWinner,
-  getMatchesByDate,
   getMatchesForDate,
   getOwnerForTeam,
   getOwnerOpportunityRows,
-  getPlayerGoalTotals,
   getQualifiedTeams,
   getSelectedPlayers,
   getTeam,
@@ -30,7 +27,6 @@ import { loadInitialState, saveStateSnapshot, storageKey } from "./app-state.mjs
 
 const adminStorageKey = "world-cup-pool-dashboard-admin-unlocked";
 const adminPassword = "Noah";
-const officialIds = new Set(fixtures.map((fixture) => fixture.id));
 const selectedPlayers = getSelectedPlayers();
 const ownerColors = {
   Sherman: "#e76f51",
@@ -47,7 +43,6 @@ let state = createEmptyState();
 let adminUnlocked = sessionStorage.getItem(adminStorageKey) === "true";
 let selectedMatchId = fixtures[0].id;
 let activeTab = "matches";
-let renderTimer = 0;
 const filters = {
   search: "",
   owner: "all",
@@ -63,11 +58,9 @@ const dom = {
   spotlight: document.getElementById("spotlight"),
   matchList: document.getElementById("match-list"),
   impactPanel: document.getElementById("impact-panel"),
-  updatePanel: document.getElementById("update-panel"),
-  awardsPanel: document.getElementById("awards-panel"),
   groupsPanel: document.getElementById("groups-panel"),
   draftPanel: document.getElementById("draft-panel"),
-  dataPanel: document.getElementById("data-panel"),
+  rulesPanel: document.getElementById("rules-panel"),
   search: document.getElementById("search"),
   ownerFilter: document.getElementById("owner-filter"),
   groupFilter: document.getElementById("group-filter"),
@@ -115,8 +108,6 @@ function attachEvents() {
   });
 
   document.body.addEventListener("click", handleClick);
-  document.body.addEventListener("change", handleChange);
-  document.body.addEventListener("input", handleInput);
 
   document.getElementById("export-json").addEventListener("click", exportJson);
   document.getElementById("export-score-csv").addEventListener("click", exportScoreCsv);
@@ -146,11 +137,9 @@ function render() {
   renderPulse();
   renderSpotlight();
   renderMatches();
-  renderUpdateScore();
-  renderAwards(result);
   renderGroups(result);
   renderDraft();
-  renderData(result);
+  renderRules();
 }
 
 function renderLeaderboard(result) {
@@ -360,45 +349,6 @@ function renderImpact() {
   `;
 }
 
-function renderAwards(result) {
-  const playerGoalTotals = getPlayerGoalTotals(state);
-  const maxGoals = Math.max(0, ...selectedPlayers.map((player) => Number(playerGoalTotals[player.name] || 0)));
-  const topScorers = selectedPlayers.filter((player) => Number(playerGoalTotals[player.name] || 0) === maxGoals && maxGoals > 0);
-
-  dom.awardsPanel.innerHTML = `
-    <div class="award-grid">
-      <section class="card">
-        <div class="section-title">
-          <span>Selected Player Goals</span>
-          <small>${topScorers.length ? topScorers.map((player) => player.name).join(", ") : "No leader yet"}</small>
-        </div>
-        ${selectedPlayers.map((player) => playerGoalRow(player, playerGoalTotals)).join("")}
-      </section>
-
-      <section class="card">
-        <div class="section-title">
-          <span>Award Winners</span>
-          <small>Selected player +8, selected team +5</small>
-        </div>
-        ${Object.entries(awardLabels).map(awardRow).join("")}
-        <div class="impact-section">
-          <div class="card-title">Current Award Points</div>
-          <ul class="detail-list">
-            ${result.ownerTotals
-              .flatMap((row) =>
-                row.details
-                  .filter((detail) => detail.category === "Individual Awards")
-                  .map((detail) => detailItem(detail, row.owner)),
-              )
-              .slice(0, 12)
-              .join("") || `<li><span class="point-chip">0</span><span>No award points entered.</span></li>`}
-          </ul>
-        </div>
-      </section>
-    </div>
-  `;
-}
-
 function renderGroups(result) {
   const standings = getGroupStandings(state);
   const qualified = getQualifiedTeams(state);
@@ -469,60 +419,17 @@ function renderDraft() {
   `;
 }
 
-function renderData(result) {
-  const serialized = JSON.stringify(state, null, 2);
-  const disabled = adminUnlocked ? "" : "disabled";
-  dom.dataPanel.innerHTML = `
-    <div class="data-grid">
-      <section class="data-box">
-        <h3>Export</h3>
-        <div class="knockout-form">
-          <button type="button" data-action="export-json">JSON Snapshot</button>
-          <button type="button" data-action="export-score-csv">Scores CSV</button>
-          <button type="button" data-action="export-match-csv">Matches CSV</button>
-          <button type="button" data-action="copy-json">Copy JSON</button>
-        </div>
-        <textarea class="import-area" readonly>${escapeHtml(serialized)}</textarea>
-      </section>
-
-      <section class="data-box">
-        <h3>Import</h3>
-        <textarea class="import-area" id="paste-json" placeholder="Paste exported JSON" ${disabled}></textarea>
-        <div class="knockout-form" style="margin-top:8px">
-          <button type="button" data-action="import-pasted-json" ${disabled}>Import Pasted JSON</button>
-          <button type="button" data-action="load-demo" ${disabled}>Load Sample Results</button>
-        </div>
-      </section>
-
-      <section class="data-box">
-        <h3>Add Knockout Match</h3>
-        <form class="knockout-form" id="knockout-form">
-          <select name="stage" aria-label="Stage" ${disabled}>
-            <option value="r32">Round of 32</option>
-            <option value="r16">Round of 16</option>
-            <option value="qf">Quarterfinal</option>
-            <option value="sf">Semifinal</option>
-            <option value="final">Final</option>
-          </select>
-          <input name="date" type="date" value="2026-06-29" ${disabled} />
-          <select name="home" aria-label="Home team" ${disabled}>${teamOptions()}</select>
-          <select name="away" aria-label="Away team" ${disabled}>${teamOptions("Germany")}</select>
-          <button class="full-span" type="submit" ${disabled}>Add Match Row</button>
-        </form>
-      </section>
-
-      <section class="data-box">
-        <h3>Rule Reference</h3>
-        <div class="rules-list">${ruleLines().join("")}</div>
-        <p class="muted">
-          Fixture names are normalized to the pool sheet. Schedule source:
-          <a href="https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/match-schedule-fixtures-results-teams-stadiums">FIFA match schedule</a>.
-        </p>
-      </section>
-    </div>
+function renderRules() {
+  dom.rulesPanel.innerHTML = `
+    <section class="data-box rules-reference">
+      <h3>Rules Reference</h3>
+      <div class="rules-list">${ruleLines().join("")}</div>
+      <p class="muted">
+        Fixture names are normalized to the pool sheet. Schedule source:
+        <a href="https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/match-schedule-fixtures-results-teams-stadiums">FIFA match schedule</a>.
+      </p>
+    </section>
   `;
-
-  document.getElementById("knockout-form")?.addEventListener("submit", addKnockoutMatch);
 }
 
 function matchCard(match) {
@@ -530,7 +437,6 @@ function matchCard(match) {
   const awayOwner = getOwnerForTeam(match.away);
   const winner = getMatchWinner(match);
   const selected = match.id === selectedMatchId ? " selected" : "";
-  const isCustom = !officialIds.has(match.id);
   const playerGoalLines = selectedPlayersForMatch(match)
     .filter((player) => matchPlayerGoals(match.id)[player.name] > 0)
     .map((player) => `${player.name}: ${matchPlayerGoals(match.id)[player.name]}`);
@@ -560,70 +466,8 @@ function matchCard(match) {
       <div class="match-summary">
         <div class="readonly-score">${scoreValue(match.homeScore) || "-"}<span>:</span>${scoreValue(match.awayScore) || "-"}</div>
         ${playerGoalLines.length ? `<div class="muted">${playerGoalLines.map(escapeHtml).join(" + ")}</div>` : `<div class="muted">No selected-player goals entered</div>`}
-        <div class="result-options">
-          ${isCustom ? `<button class="icon-button danger" type="button" data-action="remove-custom" data-match-id="${escapeHtml(match.id)}">Remove</button>` : ""}
-        </div>
       </div>
     </article>
-  `;
-}
-
-function renderUpdateScore() {
-  const matches = getAllMatches(state);
-  const match = matches.find((row) => row.id === selectedMatchId) ?? firstRelevantMatch();
-  if (!match) {
-    dom.updatePanel.innerHTML = `<div class="empty-state">No match rows available.</div>`;
-    return;
-  }
-  selectedMatchId = match.id;
-  const selectedPlayerRows = selectedPlayersForMatch(match);
-  const disabled = adminUnlocked ? "" : "disabled";
-
-  dom.updatePanel.innerHTML = `
-    ${adminGate()}
-    <section class="card update-score-card">
-      <div class="section-title">
-        <span>Update Score</span>
-        <small>${formatDate(match.date)}${match.group ? ` + Group ${escapeHtml(match.group)}` : ""} + ${escapeHtml(match.venue || "TBD")}</small>
-      </div>
-
-      <label class="match-picker">
-        <span class="muted">Match</span>
-        <select data-action="pick-update-match" aria-label="Match to update">
-          ${matchDayOptions()}
-        </select>
-      </label>
-
-      <div class="update-teams">
-        ${updateTeamPanel(match, "home")}
-        ${updateTeamPanel(match, "away")}
-      </div>
-
-      <div class="result-options update-options">
-        <label class="check-label"><input data-match-id="${escapeHtml(match.id)}" data-field="status" type="checkbox" ${match.status === "final" ? "checked" : ""} ${disabled} /> Final</label>
-        ${
-          match.stage !== "group"
-            ? `
-              <label class="check-label"><input data-match-id="${escapeHtml(match.id)}" data-field="wentToPens" type="checkbox" ${match.wentToPens ? "checked" : ""} ${disabled} /> Pens</label>
-              <select class="compact-select" data-match-id="${escapeHtml(match.id)}" data-field="penaltyWinner" aria-label="Penalty winner" ${disabled}>
-                <option value="">PK winner</option>
-                <option value="${escapeHtml(match.home)}" ${match.penaltyWinner === match.home ? "selected" : ""}>${escapeHtml(match.home)}</option>
-                <option value="${escapeHtml(match.away)}" ${match.penaltyWinner === match.away ? "selected" : ""}>${escapeHtml(match.away)}</option>
-              </select>
-            `
-            : ""
-        }
-      </div>
-
-      <div class="impact-section">
-        <div class="card-title">Selected Players In This Match</div>
-        ${
-          selectedPlayerRows.length
-            ? selectedPlayerRows.map((player) => matchPlayerGoalRow(match, player)).join("")
-            : `<div class="empty-state compact-empty">No selected players from the 8 picks are in this match.</div>`
-        }
-      </div>
-    </section>
   `;
 }
 
@@ -738,42 +582,12 @@ function opportunityTable(rows) {
   `;
 }
 
-function updateTeamPanel(match, side) {
-  const team = match[side];
-  const scoreField = side === "home" ? "homeScore" : "awayScore";
-  const owner = getOwnerForTeam(team);
-  const disabled = adminUnlocked ? "" : "disabled";
-  return `
-    <section class="update-team">
-      <div>
-        <strong>${escapeHtml(team)}</strong>
-        <div class="muted">${escapeHtml(side === "home" ? "Home" : "Away")} + <span class="owner-chip" style="--owner-color:${ownerColor(owner)}">${escapeHtml(owner || "Unowned")}</span></div>
-      </div>
-      <input class="score-input" data-match-id="${escapeHtml(match.id)}" data-field="${scoreField}" type="number" min="0" step="1" value="${scoreValue(match[scoreField])}" aria-label="${escapeHtml(team)} score" ${disabled} />
-    </section>
-  `;
-}
-
-function matchPlayerGoalRow(match, player) {
-  const goals = matchPlayerGoals(match.id)[player.name] ?? 0;
-  const disabled = adminUnlocked ? "" : "disabled";
-  return `
-    <div class="player-row">
-      <div>
-        <strong>${escapeHtml(player.name)}</strong>
-        <div class="muted">${escapeHtml(player.team)} + ${escapeHtml(player.owner)}</div>
-      </div>
-      <input class="compact-input" data-match-id="${escapeHtml(match.id)}" data-match-player-goal="${escapeHtml(player.name)}" type="number" min="0" step="1" value="${goals}" aria-label="${escapeHtml(player.name)} goals in this match" ${disabled} />
-    </div>
-  `;
-}
-
 function adminGate() {
   return `
     <section class="card admin-gate ${adminUnlocked ? "unlocked" : ""}">
       <div>
         <div class="card-title">${adminUnlocked ? "Editing Unlocked" : "Editing Locked"}</div>
-        <div class="muted">${adminUnlocked ? "Score updates and data changes are enabled in this browser session." : "Enter the admin key to change scores, awards, imports, or match rows."}</div>
+        <div class="muted">${adminUnlocked ? "Data changes are enabled in this browser session." : "Enter the admin key to change awards, imports, or local data."}</div>
       </div>
       ${
         adminUnlocked
@@ -811,23 +625,6 @@ function playerGoalRow(player, playerGoalTotals) {
       </div>
       <strong class="goal-total">${goals}</strong>
     </div>
-  `;
-}
-
-function awardRow([key, label]) {
-  const selected = state.awards[key] ?? "";
-  const disabled = adminUnlocked ? "" : "disabled";
-  return `
-    <label class="award-row">
-      <strong>${escapeHtml(label)}</strong>
-      <select class="award-select" data-award="${escapeHtml(key)}" ${disabled}>
-        <option value="">Not set</option>
-        <option value="Other" ${selected === "Other" ? "selected" : ""}>Other / unselected</option>
-        ${selectedPlayers
-          .map((player) => `<option value="${escapeHtml(player.name)}" ${selected === player.name ? "selected" : ""}>${escapeHtml(player.name)} (${escapeHtml(player.team)})</option>`)
-          .join("")}
-      </select>
-    </label>
   `;
 }
 
@@ -986,104 +783,8 @@ function handleClick(event) {
     return;
   }
 
-  if (action === "remove-custom") {
-    if (!requireAdmin()) return;
-    const id = event.target.closest("[data-match-id]").dataset.matchId;
-    state.customMatches = state.customMatches.filter((match) => match.id !== id);
-    saveAndRender();
-    return;
-  }
-
   if (action === "export-json") exportJson();
   if (action === "export-score-csv") exportScoreCsv();
-  if (action === "export-match-csv") exportMatchCsv();
-  if (action === "copy-json") copyJson();
-  if (action === "import-pasted-json" && requireAdmin()) importPastedJson();
-  if (action === "load-demo" && requireAdmin()) loadDemoResults();
-}
-
-function handleChange(event) {
-  if (event.target.dataset.action === "pick-update-match") {
-    selectedMatchId = event.target.value;
-    render();
-    return;
-  }
-
-  const matchId = event.target.dataset.matchId;
-  const field = event.target.dataset.field;
-  if (matchId && field) {
-    if (!requireAdmin()) return;
-    const value = readFieldValue(event.target, field);
-    updateMatch(matchId, { [field]: value });
-    saveAndRender();
-    return;
-  }
-
-  const matchPlayerGoal = event.target.dataset.matchPlayerGoal;
-  if (matchId && matchPlayerGoal) {
-    if (!requireAdmin()) return;
-    updateMatchPlayerGoal(matchId, matchPlayerGoal, event.target.value);
-    saveAndRender();
-    return;
-  }
-
-  const award = event.target.dataset.award;
-  if (award) {
-    if (!requireAdmin()) return;
-    state.awards[award] = event.target.value;
-    saveAndRender();
-  }
-}
-
-function handleInput(event) {
-  const matchId = event.target.dataset.matchId;
-  const field = event.target.dataset.field;
-  if (matchId && (field === "homeScore" || field === "awayScore")) {
-    if (!requireAdmin(false)) return;
-    updateMatch(matchId, { [field]: event.target.value });
-    saveState();
-    scheduleRender();
-    return;
-  }
-
-  const matchPlayerGoal = event.target.dataset.matchPlayerGoal;
-  if (matchId && matchPlayerGoal) {
-    if (!requireAdmin(false)) return;
-    updateMatchPlayerGoal(matchId, matchPlayerGoal, event.target.value);
-    saveState();
-    scheduleRender();
-  }
-}
-
-function readFieldValue(target, field) {
-  if (field === "status") return target.checked ? "final" : "scheduled";
-  if (field === "wentToPens") return target.checked;
-  return target.value;
-}
-
-function updateMatch(id, patch) {
-  if (officialIds.has(id)) {
-    state.matches[id] = {
-      status: "scheduled",
-      homeScore: "",
-      awayScore: "",
-      wentToPens: false,
-      penaltyWinner: "",
-      ...(state.matches[id] ?? {}),
-      ...patch,
-    };
-    return;
-  }
-
-  const match = state.customMatches.find((entry) => entry.id === id);
-  if (match) Object.assign(match, patch);
-}
-
-function updateMatchPlayerGoal(matchId, playerName, value) {
-  state.matchPlayerGoals[matchId] = {
-    ...(state.matchPlayerGoals[matchId] ?? {}),
-    [playerName]: Math.max(0, Number(value || 0)),
-  };
 }
 
 function unlockAdmin() {
@@ -1105,40 +806,8 @@ function lockAdmin() {
 
 function requireAdmin(showAlert = true) {
   if (adminUnlocked) return true;
-  if (showAlert) window.alert("Enter the admin key on the Update Score tab before editing.");
+  if (showAlert) window.alert("Enter the admin key before editing local data.");
   return false;
-}
-
-function addKnockoutMatch(event) {
-  event.preventDefault();
-  if (!requireAdmin()) return;
-  const formData = new FormData(event.currentTarget);
-  const home = String(formData.get("home"));
-  const away = String(formData.get("away"));
-  if (!home || !away || home === away) {
-    window.alert("Pick two different teams.");
-    return;
-  }
-
-  const id = `ko-${Date.now()}`;
-  state.customMatches.push({
-    id,
-    stage: String(formData.get("stage")),
-    date: String(formData.get("date") || "2026-06-29"),
-    group: "",
-    venue: "Knockout",
-    home,
-    away,
-    homeScore: "",
-    awayScore: "",
-    status: "scheduled",
-    wentToPens: false,
-    penaltyWinner: "",
-  });
-  selectedMatchId = id;
-  saveAndRender();
-  activeTab = "matches";
-  document.querySelector('[data-tab="matches"]').click();
 }
 
 function filterMatches(matches) {
@@ -1305,11 +974,6 @@ function saveAndRender() {
   render();
 }
 
-function scheduleRender() {
-  window.clearTimeout(renderTimer);
-  renderTimer = window.setTimeout(render, 350);
-}
-
 function saveState() {
   saveStateSnapshot(state, localStorage, storageKey);
 }
@@ -1337,35 +1001,12 @@ function toCsv(rows) {
     .join("\n");
 }
 
-function teamOptions(selected = "Brazil") {
-  return teams
-    .map((team) => `<option value="${escapeHtml(team.name)}" ${team.name === selected ? "selected" : ""}>${escapeHtml(team.name)}</option>`)
-    .join("");
-}
-
 function selectedPlayersForMatch(match) {
   return selectedPlayers.filter((player) => player.team === match.home || player.team === match.away);
 }
 
 function matchPlayerGoals(matchId) {
   return state.matchPlayerGoals[matchId] ?? {};
-}
-
-function formatMatchOption(match) {
-  const group = match.group ? `Group ${match.group}` : stageLabels[match.stage] ?? match.stage;
-  return `${match.home} vs ${match.away} - ${group} - ${match.venue || "TBD"}`;
-}
-
-function matchDayOptions() {
-  return getMatchesByDate(state)
-    .map(
-      ({ date, matches }) => `
-        <optgroup label="${escapeHtml(formatDate(date))}">
-          ${matches.map((match) => `<option value="${escapeHtml(match.id)}" ${match.id === selectedMatchId ? "selected" : ""}>${escapeHtml(formatMatchOption(match))}</option>`).join("")}
-        </optgroup>
-      `,
-    )
-    .join("");
 }
 
 function scoreValue(value) {

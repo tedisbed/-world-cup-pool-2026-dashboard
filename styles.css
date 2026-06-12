@@ -367,9 +367,7 @@ h1 {
 
 .match-toolbar input,
 .match-toolbar select,
-.score-input,
 .compact-input,
-.award-select,
 .knockout-form input,
 .knockout-form select,
 .import-area {
@@ -645,18 +643,6 @@ h1 {
   gap: 8px;
 }
 
-.score-input {
-  min-width: 0;
-  text-align: center;
-  font-size: 22px;
-  font-weight: 900;
-}
-
-.update-score-card {
-  display: grid;
-  gap: 14px;
-}
-
 .admin-gate {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -711,33 +697,6 @@ button:disabled {
   padding: 8px 10px;
 }
 
-.update-teams {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.update-team {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 88px;
-  gap: 10px;
-  align-items: center;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 12px;
-  background: #fbfcfe;
-}
-
-.update-team strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.update-options {
-  margin-top: 0;
-}
-
 .goal-total {
   justify-self: end;
   min-width: 48px;
@@ -773,18 +732,6 @@ button:disabled {
   margin: 0;
 }
 
-.compact-select {
-  min-height: 30px;
-  max-width: 150px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fff;
-  padding: 4px 8px;
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: 800;
-}
-
 .impact-panel {
   position: sticky;
   top: 91px;
@@ -806,16 +753,10 @@ button:disabled {
   font-size: 13px;
 }
 
-.award-grid,
 .group-grid,
-.draft-grid,
-.data-grid {
+.draft-grid {
   display: grid;
   gap: 12px;
-}
-
-.award-grid {
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
 }
 
 .card,
@@ -856,14 +797,6 @@ button:disabled {
   padding: 6px 8px;
   text-align: center;
   font-weight: 900;
-}
-
-.award-row {
-  display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(160px, 1.2fr);
-  gap: 8px;
-  align-items: center;
-  margin-top: 10px;
 }
 
 .group-grid {
@@ -939,10 +872,6 @@ th {
   border-color: #f4d489;
   background: #fff6d8;
   color: #5d3a00;
-}
-
-.data-grid {
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
 .rules-list {
@@ -1047,10 +976,7 @@ th {
 
   .match-toolbar,
   .match-card,
-  .award-grid,
-  .knockout-form,
-  .update-teams,
-  .update-team {
+  .knockout-form {
     grid-template-columns: 1fr;
   }
 
