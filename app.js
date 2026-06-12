@@ -10,6 +10,7 @@ import {
   getMatchImpact,
   getMatchWinner,
   getOwnerForTeam,
+  getPlayerGoalTotals,
   getQualifiedTeams,
   getSelectedPlayers,
   getTeam,
@@ -37,7 +38,6 @@ const ownerColors = {
 };
 
 let state = loadState();
-let selectedOwner = owners[0];
 let selectedMatchId = firstRelevantMatch()?.id ?? fixtures[0].id;
 let activeTab = "matches";
 let renderTimer = 0;
@@ -50,11 +50,11 @@ const filters = {
 
 const dom = {
   leaderboard: document.getElementById("leaderboard"),
-  ownerDetail: document.getElementById("owner-detail"),
   statusStrip: document.getElementById("status-strip"),
   spotlight: document.getElementById("spotlight"),
   matchList: document.getElementById("match-list"),
   impactPanel: document.getElementById("impact-panel"),
+  updatePanel: document.getElementById("update-panel"),
   awardsPanel: document.getElementById("awards-panel"),
   groupsPanel: document.getElementById("groups-panel"),
   draftPanel: document.getElementById("draft-panel"),
@@ -133,6 +133,7 @@ function render() {
   renderStatusStrip(result);
   renderSpotlight();
   renderMatches();
+  renderUpdateScore();
   renderAwards(result);
   renderGroups(result);
   renderDraft();
@@ -146,7 +147,7 @@ function renderLeaderboard(result) {
       const picks = draftPicks.filter((pick) => pick.owner === row.owner);
       const bar = Math.max(5, Math.round((row.score / maxScore) * 100));
       return `
-        <div class="leader-row" data-owner="${escapeHtml(row.owner)}" role="button" tabindex="0" style="--owner-color: ${ownerColor(row.owner)}">
+        <div class="leader-row" style="--owner-color: ${ownerColor(row.owner)}">
           <div class="rank">${index + 1}</div>
           <div>
             <div class="owner-name">${escapeHtml(row.owner)}</div>
@@ -160,21 +161,6 @@ function renderLeaderboard(result) {
       `;
     })
     .join("");
-
-  const selected = result.ownerTotals.find((row) => row.owner === selectedOwner) ?? result.ownerTotals[0];
-  selectedOwner = selected.owner;
-  const details = [...selected.details]
-    .sort((a, b) => Math.abs(b.points) - Math.abs(a.points) || a.reason.localeCompare(b.reason))
-    .slice(0, 14);
-
-  dom.ownerDetail.innerHTML = `
-    <h3>${escapeHtml(selected.owner)} scoring log</h3>
-    ${
-      details.length
-        ? `<ul class="detail-list">${details.map((detail) => detailItem(detail)).join("")}</ul>`
-        : `<div class="empty-state">No scored events yet.</div>`
-    }
-  `;
 }
 
 function renderStatusStrip(result) {
@@ -232,9 +218,6 @@ function renderSpotlight() {
 
 function renderMatches() {
   const matches = filterMatches(getAllMatches(state));
-  if (!matches.some((match) => match.id === selectedMatchId)) {
-    selectedMatchId = matches[0]?.id ?? selectedMatchId;
-  }
 
   dom.matchList.innerHTML = matches.length
     ? matches.map(matchCard).join("")
@@ -298,8 +281,9 @@ function renderImpact() {
 }
 
 function renderAwards(result) {
-  const maxGoals = Math.max(0, ...selectedPlayers.map((player) => Number(state.playerGoals[player.name] || 0)));
-  const topScorers = selectedPlayers.filter((player) => Number(state.playerGoals[player.name] || 0) === maxGoals && maxGoals > 0);
+  const playerGoalTotals = getPlayerGoalTotals(state);
+  const maxGoals = Math.max(0, ...selectedPlayers.map((player) => Number(playerGoalTotals[player.name] || 0)));
+  const topScorers = selectedPlayers.filter((player) => Number(playerGoalTotals[player.name] || 0) === maxGoals && maxGoals > 0);
 
   dom.awardsPanel.innerHTML = `
     <div class="award-grid">
@@ -308,7 +292,7 @@ function renderAwards(result) {
           <span>Selected Player Goals</span>
           <small>${topScorers.length ? topScorers.map((player) => player.name).join(", ") : "No leader yet"}</small>
         </div>
-        ${selectedPlayers.map(playerGoalRow).join("")}
+        ${selectedPlayers.map((player) => playerGoalRow(player, playerGoalTotals)).join("")}
       </section>
 
       <section class="card">
@@ -466,6 +450,9 @@ function matchCard(match) {
   const winner = getMatchWinner(match);
   const selected = match.id === selectedMatchId ? " selected" : "";
   const isCustom = !officialIds.has(match.id);
+  const playerGoalLines = selectedPlayersForMatch(match)
+    .filter((player) => matchPlayerGoals(match.id)[player.name] > 0)
+    .map((player) => `${player.name}: ${matchPlayerGoals(match.id)[player.name]}`);
 
   return `
     <article class="match-card${selected}" data-action="select-match" data-match-id="${escapeHtml(match.id)}">
@@ -489,29 +476,102 @@ function matchCard(match) {
           <span class="status-badge">${isCompletedMatch(match) ? `Final${winner ? `: ${escapeHtml(winner)}` : ""}` : "Open"}</span>
         </div>
       </div>
-      <div>
-        <div class="result-grid">
-          <input class="score-input" data-match-id="${escapeHtml(match.id)}" data-field="homeScore" type="number" min="0" step="1" value="${scoreValue(match.homeScore)}" aria-label="${escapeHtml(match.home)} score" />
-          <input class="score-input" data-match-id="${escapeHtml(match.id)}" data-field="awayScore" type="number" min="0" step="1" value="${scoreValue(match.awayScore)}" aria-label="${escapeHtml(match.away)} score" />
-        </div>
+      <div class="match-summary">
+        <div class="readonly-score">${scoreValue(match.homeScore) || "-"}<span>:</span>${scoreValue(match.awayScore) || "-"}</div>
+        ${playerGoalLines.length ? `<div class="muted">${playerGoalLines.map(escapeHtml).join(" + ")}</div>` : `<div class="muted">No selected-player goals entered</div>`}
         <div class="result-options">
-          <label class="check-label"><input data-match-id="${escapeHtml(match.id)}" data-field="status" type="checkbox" ${match.status === "final" ? "checked" : ""} /> Final</label>
-          ${
-            match.stage !== "group"
-              ? `
-                <label class="check-label"><input data-match-id="${escapeHtml(match.id)}" data-field="wentToPens" type="checkbox" ${match.wentToPens ? "checked" : ""} /> Pens</label>
-                <select class="compact-select" data-match-id="${escapeHtml(match.id)}" data-field="penaltyWinner" aria-label="Penalty winner">
-                  <option value="">PK winner</option>
-                  <option value="${escapeHtml(match.home)}" ${match.penaltyWinner === match.home ? "selected" : ""}>${escapeHtml(match.home)}</option>
-                  <option value="${escapeHtml(match.away)}" ${match.penaltyWinner === match.away ? "selected" : ""}>${escapeHtml(match.away)}</option>
-                </select>
-              `
-              : ""
-          }
+          <button class="icon-button" type="button" data-action="edit-score" data-match-id="${escapeHtml(match.id)}">Update</button>
           ${isCustom ? `<button class="icon-button danger" type="button" data-action="remove-custom" data-match-id="${escapeHtml(match.id)}">Remove</button>` : ""}
         </div>
       </div>
     </article>
+  `;
+}
+
+function renderUpdateScore() {
+  const matches = getAllMatches(state);
+  const match = matches.find((row) => row.id === selectedMatchId) ?? firstRelevantMatch();
+  if (!match) {
+    dom.updatePanel.innerHTML = `<div class="empty-state">No match rows available.</div>`;
+    return;
+  }
+  selectedMatchId = match.id;
+  const selectedPlayerRows = selectedPlayersForMatch(match);
+
+  dom.updatePanel.innerHTML = `
+    <section class="card update-score-card">
+      <div class="section-title">
+        <span>Update Score</span>
+        <small>${formatDate(match.date)}${match.group ? ` + Group ${escapeHtml(match.group)}` : ""} + ${escapeHtml(match.venue || "TBD")}</small>
+      </div>
+
+      <label class="match-picker">
+        <span class="muted">Match</span>
+        <select data-action="pick-update-match" aria-label="Match to update">
+          ${matches
+            .map((row) => `<option value="${escapeHtml(row.id)}" ${row.id === match.id ? "selected" : ""}>${escapeHtml(formatMatchOption(row))}</option>`)
+            .join("")}
+        </select>
+      </label>
+
+      <div class="update-teams">
+        ${updateTeamPanel(match, "home")}
+        ${updateTeamPanel(match, "away")}
+      </div>
+
+      <div class="result-options update-options">
+        <label class="check-label"><input data-match-id="${escapeHtml(match.id)}" data-field="status" type="checkbox" ${match.status === "final" ? "checked" : ""} /> Final</label>
+        ${
+          match.stage !== "group"
+            ? `
+              <label class="check-label"><input data-match-id="${escapeHtml(match.id)}" data-field="wentToPens" type="checkbox" ${match.wentToPens ? "checked" : ""} /> Pens</label>
+              <select class="compact-select" data-match-id="${escapeHtml(match.id)}" data-field="penaltyWinner" aria-label="Penalty winner">
+                <option value="">PK winner</option>
+                <option value="${escapeHtml(match.home)}" ${match.penaltyWinner === match.home ? "selected" : ""}>${escapeHtml(match.home)}</option>
+                <option value="${escapeHtml(match.away)}" ${match.penaltyWinner === match.away ? "selected" : ""}>${escapeHtml(match.away)}</option>
+              </select>
+            `
+            : ""
+        }
+      </div>
+
+      <div class="impact-section">
+        <div class="card-title">Selected Players In This Match</div>
+        ${
+          selectedPlayerRows.length
+            ? selectedPlayerRows.map((player) => matchPlayerGoalRow(match, player)).join("")
+            : `<div class="empty-state compact-empty">No selected players from the 8 picks are in this match.</div>`
+        }
+      </div>
+    </section>
+  `;
+}
+
+function updateTeamPanel(match, side) {
+  const team = match[side];
+  const scoreField = side === "home" ? "homeScore" : "awayScore";
+  const owner = getOwnerForTeam(team);
+  return `
+    <section class="update-team">
+      <div>
+        <strong>${escapeHtml(team)}</strong>
+        <div class="muted">${escapeHtml(side === "home" ? "Home" : "Away")} + <span class="owner-chip" style="--owner-color:${ownerColor(owner)}">${escapeHtml(owner || "Unowned")}</span></div>
+      </div>
+      <input class="score-input" data-match-id="${escapeHtml(match.id)}" data-field="${scoreField}" type="number" min="0" step="1" value="${scoreValue(match[scoreField])}" aria-label="${escapeHtml(team)} score" />
+    </section>
+  `;
+}
+
+function matchPlayerGoalRow(match, player) {
+  const goals = matchPlayerGoals(match.id)[player.name] ?? 0;
+  return `
+    <div class="player-row">
+      <div>
+        <strong>${escapeHtml(player.name)}</strong>
+        <div class="muted">${escapeHtml(player.team)} + ${escapeHtml(player.owner)}</div>
+      </div>
+      <input class="compact-input" data-match-id="${escapeHtml(match.id)}" data-match-player-goal="${escapeHtml(player.name)}" type="number" min="0" step="1" value="${goals}" aria-label="${escapeHtml(player.name)} goals in this match" />
+    </div>
   `;
 }
 
@@ -532,19 +592,15 @@ function miniMatchCard(match) {
   `;
 }
 
-function playerGoalRow(player) {
-  const goals = Number(state.playerGoals[player.name] || 0);
+function playerGoalRow(player, playerGoalTotals) {
+  const goals = Number(playerGoalTotals[player.name] || 0);
   return `
     <div class="player-row">
       <div>
         <strong>${escapeHtml(player.name)}</strong>
         <div class="muted">${escapeHtml(player.team)} + ${escapeHtml(player.owner)}</div>
       </div>
-      <div class="stepper">
-        <button type="button" data-action="goal-step" data-player="${escapeHtml(player.name)}" data-delta="-1">-</button>
-        <input class="compact-input" data-player-goals="${escapeHtml(player.name)}" type="number" min="0" step="1" value="${goals}" aria-label="${escapeHtml(player.name)} goals" />
-        <button type="button" data-action="goal-step" data-player="${escapeHtml(player.name)}" data-delta="1">+</button>
-      </div>
+      <strong class="goal-total">${goals}</strong>
     </div>
   `;
 }
@@ -696,13 +752,6 @@ function ruleLines() {
 }
 
 function handleClick(event) {
-  const ownerRow = event.target.closest("[data-owner]");
-  if (ownerRow) {
-    selectedOwner = ownerRow.dataset.owner;
-    renderLeaderboard(calculateScores(state));
-    return;
-  }
-
   if (event.target.closest(".match-card") && event.target.closest("input, select, textarea, label")) {
     return;
   }
@@ -713,7 +762,7 @@ function handleClick(event) {
   if (action === "select-match") {
     const row = event.target.closest("[data-match-id]");
     selectedMatchId = row.dataset.matchId;
-    renderMatches();
+    render();
     return;
   }
 
@@ -724,11 +773,10 @@ function handleClick(event) {
     return;
   }
 
-  if (action === "goal-step") {
-    const player = event.target.dataset.player;
-    const delta = Number(event.target.dataset.delta);
-    state.playerGoals[player] = Math.max(0, Number(state.playerGoals[player] || 0) + delta);
-    saveAndRender();
+  if (action === "edit-score") {
+    selectedMatchId = event.target.closest("[data-match-id]").dataset.matchId;
+    activeTab = "update";
+    document.querySelector('[data-tab="update"]').click();
     return;
   }
 
@@ -741,6 +789,12 @@ function handleClick(event) {
 }
 
 function handleChange(event) {
+  if (event.target.dataset.action === "pick-update-match") {
+    selectedMatchId = event.target.value;
+    render();
+    return;
+  }
+
   const matchId = event.target.dataset.matchId;
   const field = event.target.dataset.field;
   if (matchId && field) {
@@ -750,9 +804,9 @@ function handleChange(event) {
     return;
   }
 
-  const playerGoal = event.target.dataset.playerGoals;
-  if (playerGoal) {
-    state.playerGoals[playerGoal] = Math.max(0, Number(event.target.value || 0));
+  const matchPlayerGoal = event.target.dataset.matchPlayerGoal;
+  if (matchId && matchPlayerGoal) {
+    updateMatchPlayerGoal(matchId, matchPlayerGoal, event.target.value);
     saveAndRender();
     return;
   }
@@ -774,9 +828,9 @@ function handleInput(event) {
     return;
   }
 
-  const playerGoal = event.target.dataset.playerGoals;
-  if (playerGoal) {
-    state.playerGoals[playerGoal] = Math.max(0, Number(event.target.value || 0));
+  const matchPlayerGoal = event.target.dataset.matchPlayerGoal;
+  if (matchId && matchPlayerGoal) {
+    updateMatchPlayerGoal(matchId, matchPlayerGoal, event.target.value);
     saveState();
     scheduleRender();
   }
@@ -804,6 +858,13 @@ function updateMatch(id, patch) {
 
   const match = state.customMatches.find((entry) => entry.id === id);
   if (match) Object.assign(match, patch);
+}
+
+function updateMatchPlayerGoal(matchId, playerName, value) {
+  state.matchPlayerGoals[matchId] = {
+    ...(state.matchPlayerGoals[matchId] ?? {}),
+    [playerName]: Math.max(0, Number(value || 0)),
+  };
 }
 
 function addKnockoutMatch(event) {
@@ -985,8 +1046,8 @@ function loadDemoResults() {
       penaltyWinner: "",
     };
   });
-  state.playerGoals.Mbappe = 1;
-  state.playerGoals.Vinicius = 2;
+  state.matchPlayerGoals["g-a-01"] = { Yamal: 1 };
+  state.matchPlayerGoals["g-i-01"] = { Mbappe: 1 };
   state.awards.goldenBoot = "Vinicius";
   saveAndRender();
 }
@@ -1041,6 +1102,19 @@ function teamOptions(selected = "Brazil") {
   return teams
     .map((team) => `<option value="${escapeHtml(team.name)}" ${team.name === selected ? "selected" : ""}>${escapeHtml(team.name)}</option>`)
     .join("");
+}
+
+function selectedPlayersForMatch(match) {
+  return selectedPlayers.filter((player) => player.team === match.home || player.team === match.away);
+}
+
+function matchPlayerGoals(matchId) {
+  return state.matchPlayerGoals[matchId] ?? {};
+}
+
+function formatMatchOption(match) {
+  const group = match.group ? `Group ${match.group}` : stageLabels[match.stage] ?? match.stage;
+  return `${formatDate(match.date)} - ${match.home} vs ${match.away} - ${group} - ${match.venue || "TBD"}`;
 }
 
 function scoreValue(value) {

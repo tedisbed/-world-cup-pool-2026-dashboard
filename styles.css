@@ -126,8 +126,7 @@ h1 {
 .card,
 .match-card,
 .metric,
-.data-box,
-.owner-detail {
+.data-box {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.94);
@@ -218,13 +217,6 @@ h1 {
   font-weight: 950;
 }
 
-.owner-detail {
-  margin-top: 12px;
-  padding: 12px;
-  box-shadow: none;
-}
-
-.owner-detail h3,
 .impact-panel h3,
 .data-box h3 {
   margin: 0 0 10px;
@@ -405,6 +397,27 @@ h1 {
   box-shadow: 0 0 0 2px rgba(8, 127, 140, 0.15);
 }
 
+.match-summary {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  justify-items: end;
+}
+
+.readonly-score {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 32px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.readonly-score span {
+  color: var(--muted);
+  font-size: 22px;
+}
+
 .match-meta {
   display: flex;
   flex-wrap: wrap;
@@ -460,6 +473,64 @@ h1 {
   text-align: center;
   font-size: 22px;
   font-weight: 900;
+}
+
+.update-score-card {
+  display: grid;
+  gap: 14px;
+}
+
+.match-picker {
+  display: grid;
+  gap: 6px;
+}
+
+.match-picker select {
+  min-height: 38px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  padding: 8px 10px;
+}
+
+.update-teams {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.update-team {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 88px;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fbfcfe;
+}
+
+.update-team strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.update-options {
+  margin-top: 0;
+}
+
+.goal-total {
+  justify-self: end;
+  min-width: 48px;
+  text-align: right;
+  font-size: 24px;
+}
+
+.compact-empty {
+  min-height: 72px;
 }
 
 .result-options {
@@ -753,8 +824,14 @@ th {
   .match-toolbar,
   .match-card,
   .award-grid,
-  .knockout-form {
+  .knockout-form,
+  .update-teams,
+  .update-team {
     grid-template-columns: 1fr;
+  }
+
+  .match-summary {
+    justify-items: start;
   }
 
   .status-strip {

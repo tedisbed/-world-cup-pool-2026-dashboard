@@ -273,6 +273,7 @@ export function createEmptyState() {
     version: 1,
     matches: {},
     customMatches: [],
+    matchPlayerGoals: {},
     playerGoals: Object.fromEntries(selectedPlayers.map((player) => [player.name, 0])),
     awards: {
       goldenBall: "",
@@ -289,6 +290,7 @@ export function normalizeState(input = {}) {
     version: 1,
     matches: { ...empty.matches, ...(input.matches ?? {}) },
     customMatches: Array.isArray(input.customMatches) ? input.customMatches : [],
+    matchPlayerGoals: normalizeMatchPlayerGoals(input.matchPlayerGoals ?? {}),
     playerGoals: { ...empty.playerGoals, ...(input.playerGoals ?? {}) },
     awards: { ...empty.awards, ...(input.awards ?? {}) },
   };
@@ -298,6 +300,21 @@ export function normalizeState(input = {}) {
   }
 
   return state;
+}
+
+function normalizeMatchPlayerGoals(input) {
+  const allowedPlayers = new Set(selectedPlayers.map((player) => player.name));
+  const output = {};
+  for (const [matchId, goalsByPlayer] of Object.entries(input ?? {})) {
+    if (!goalsByPlayer || typeof goalsByPlayer !== "object") continue;
+    const normalizedGoals = {};
+    for (const [playerName, goals] of Object.entries(goalsByPlayer)) {
+      if (!allowedPlayers.has(playerName)) continue;
+      normalizedGoals[playerName] = numberOrZero(goals);
+    }
+    if (Object.keys(normalizedGoals).length) output[matchId] = normalizedGoals;
+  }
+  return output;
 }
 
 export function getOwnerForTeam(team) {
@@ -310,6 +327,19 @@ export function getTeam(team) {
 
 export function getSelectedPlayers() {
   return selectedPlayers.map((player) => ({ ...player }));
+}
+
+export function getPlayerGoalTotals(state = createEmptyState()) {
+  const normalized = normalizeState(state);
+  const totals = Object.fromEntries(selectedPlayers.map((player) => [player.name, numberOrZero(normalized.playerGoals[player.name])]));
+
+  for (const goalsByPlayer of Object.values(normalized.matchPlayerGoals)) {
+    for (const [playerName, goals] of Object.entries(goalsByPlayer)) {
+      if (playerName in totals) totals[playerName] += numberOrZero(goals);
+    }
+  }
+
+  return totals;
 }
 
 export function getTeamsByGroup(group) {
@@ -619,9 +649,10 @@ function scoreGroupBonuses(state, add) {
 
 function scorePlayerBonuses(state, add) {
   const playerMap = new Map(selectedPlayers.map((player) => [player.name, player]));
+  const playerGoalTotals = getPlayerGoalTotals(state);
 
   for (const player of selectedPlayers) {
-    const goals = numberOrZero(state.playerGoals[player.name]);
+    const goals = numberOrZero(playerGoalTotals[player.name]);
     if (goals > 0) {
       add(
         player.owner,
@@ -633,10 +664,10 @@ function scorePlayerBonuses(state, add) {
     }
   }
 
-  const maxGoals = Math.max(0, ...selectedPlayers.map((player) => numberOrZero(state.playerGoals[player.name])));
+  const maxGoals = Math.max(0, ...selectedPlayers.map((player) => numberOrZero(playerGoalTotals[player.name])));
   if (maxGoals > 0) {
     selectedPlayers
-      .filter((player) => numberOrZero(state.playerGoals[player.name]) === maxGoals)
+      .filter((player) => numberOrZero(playerGoalTotals[player.name]) === maxGoals)
       .forEach((player) => {
         add(
           player.owner,
