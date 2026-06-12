@@ -26,8 +26,8 @@ import {
   stageLabels,
   teams,
 } from "./pool-core.mjs";
+import { loadInitialState, saveStateSnapshot, storageKey } from "./app-state.mjs";
 
-const storageKey = "world-cup-pool-dashboard-v1";
 const adminStorageKey = "world-cup-pool-dashboard-admin-unlocked";
 const adminPassword = "Noah";
 const officialIds = new Set(fixtures.map((fixture) => fixture.id));
@@ -43,9 +43,9 @@ const ownerColors = {
   Kreienberg: "#475569",
 };
 
-let state = loadState();
+let state = createEmptyState();
 let adminUnlocked = sessionStorage.getItem(adminStorageKey) === "true";
-let selectedMatchId = firstRelevantMatch()?.id ?? fixtures[0].id;
+let selectedMatchId = fixtures[0].id;
 let activeTab = "matches";
 let renderTimer = 0;
 const filters = {
@@ -76,7 +76,9 @@ const dom = {
 
 init();
 
-function init() {
+async function init() {
+  state = await loadInitialState();
+  selectedMatchId = firstRelevantMatch()?.id ?? fixtures[0].id;
   populateFilters();
   attachEvents();
   render();
@@ -1308,17 +1310,8 @@ function scheduleRender() {
   renderTimer = window.setTimeout(render, 350);
 }
 
-function loadState() {
-  try {
-    const raw = localStorage.getItem(storageKey);
-    return raw ? normalizeState(JSON.parse(raw)) : createEmptyState();
-  } catch {
-    return createEmptyState();
-  }
-}
-
 function saveState() {
-  localStorage.setItem(storageKey, JSON.stringify(state));
+  saveStateSnapshot(state, localStorage, storageKey);
 }
 
 function downloadFile(filename, content, type) {
