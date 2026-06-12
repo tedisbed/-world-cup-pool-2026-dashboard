@@ -10,6 +10,7 @@ import {
   getMatchImpact,
   getMatchWinner,
   getMatchesByDate,
+  getMatchesForDate,
   getOwnerForTeam,
   getPlayerGoalTotals,
   getQualifiedTeams,
@@ -51,6 +52,7 @@ const filters = {
 
 const dom = {
   leaderboard: document.getElementById("leaderboard"),
+  todayPanel: document.getElementById("today-panel"),
   statusStrip: document.getElementById("status-strip"),
   spotlight: document.getElementById("spotlight"),
   matchList: document.getElementById("match-list"),
@@ -132,6 +134,7 @@ function render() {
   const result = calculateScores(state);
   renderLeaderboard(result);
   renderStatusStrip(result);
+  renderToday(result);
   renderSpotlight();
   renderMatches();
   renderUpdateScore();
@@ -147,21 +150,59 @@ function renderLeaderboard(result) {
     .map((row, index) => {
       const picks = draftPicks.filter((pick) => pick.owner === row.owner);
       const bar = Math.max(5, Math.round((row.score / maxScore) * 100));
+      const details = [...row.details].sort((a, b) => Math.abs(b.points) - Math.abs(a.points) || a.reason.localeCompare(b.reason));
       return `
-        <div class="leader-row" style="--owner-color: ${ownerColor(row.owner)}">
-          <div class="rank">${index + 1}</div>
-          <div>
-            <div class="owner-name">${escapeHtml(row.owner)}</div>
-            <div class="owner-picks">
-              ${picks.map((pick) => pickBadge(pick)).join("")}
+        <details class="leader-detail" style="--owner-color: ${ownerColor(row.owner)}">
+          <summary class="leader-row">
+            <div class="rank">${index + 1}</div>
+            <div>
+              <div class="owner-name">${escapeHtml(row.owner)}</div>
+              <div class="owner-picks">
+                ${picks.map((pick) => pickBadge(pick)).join("")}
+              </div>
+              <div class="score-bar" style="width:${bar}%"></div>
             </div>
-            <div class="score-bar" style="width:${bar}%"></div>
+            <div class="score">${row.score}</div>
+          </summary>
+          <div class="leader-breakdown">
+            ${
+              details.length
+                ? `<ul class="detail-list">${details.map((detail) => detailItem(detail)).join("")}</ul>`
+                : `<div class="empty-state compact-empty">No scored events yet.</div>`
+            }
           </div>
-          <div class="score">${row.score}</div>
-        </div>
+        </details>
       `;
     })
     .join("");
+}
+
+function renderToday(result) {
+  const today = todayIso();
+  const matches = getMatchesForDate(state, today);
+  const completed = matches.filter(isCompletedMatch).length;
+  const totalSwing = matches.reduce((sum, match) => sum + todayOpportunityLines(match).length, 0);
+
+  dom.todayPanel.innerHTML = `
+    <div class="today-layout">
+      <section class="card today-summary">
+        <div class="section-title">
+          <span>Today</span>
+          <small>${formatDate(today)}</small>
+        </div>
+        <div class="today-metrics">
+          <div><strong>${matches.length}</strong><span>Matches</span></div>
+          <div><strong>${completed}</strong><span>Final</span></div>
+          <div><strong>${totalSwing}</strong><span>Point paths</span></div>
+        </div>
+      </section>
+      ${
+        matches.length
+          ? matches.map((match) => todayMatchCard(match, result)).join("")
+          : `<div class="empty-state">No matches are scheduled for today.</div>`
+      }
+    </div>
+  `;
 }
 
 function renderStatusStrip(result) {
@@ -543,6 +584,73 @@ function renderUpdateScore() {
       </div>
     </section>
   `;
+}
+
+function todayMatchCard(match, result) {
+  const winner = getMatchWinner(match);
+  const scoredDetails = result.ownerTotals
+    .flatMap((ownerRow) => ownerRow.details.map((detail) => ({ owner: ownerRow.owner, ...detail })))
+    .filter((detail) => detail.subject === match.id);
+  const selectedPlayerRows = selectedPlayersForMatch(match);
+
+  return `
+    <article class="card today-match">
+      <div class="today-match-main">
+        <div>
+          <div class="match-title">
+            <span>${escapeHtml(match.home)} vs ${escapeHtml(match.away)}</span>
+            <small>${escapeHtml(match.venue || "TBD")}</small>
+          </div>
+          <div class="match-meta">
+            <span class="badge">${escapeHtml(stageLabels[match.stage] ?? match.stage)}</span>
+            ${match.group ? `<span class="badge">Group ${escapeHtml(match.group)}</span>` : ""}
+            <span class="status-badge">${isCompletedMatch(match) ? `Final${winner ? `: ${escapeHtml(winner)}` : ""}` : "Open"}</span>
+          </div>
+        </div>
+        <div class="readonly-score">${scoreValue(match.homeScore) || "-"}<span>:</span>${scoreValue(match.awayScore) || "-"}</div>
+      </div>
+
+      <div class="today-columns">
+        <section>
+          <div class="card-title">Owners</div>
+          <div class="team-line">
+            <strong>${escapeHtml(match.home)}</strong>
+            <span class="owner-chip" style="--owner-color:${ownerColor(getOwnerForTeam(match.home))}">${escapeHtml(getOwnerForTeam(match.home) || "Unowned")}</span>
+          </div>
+          <div class="team-line">
+            <strong>${escapeHtml(match.away)}</strong>
+            <span class="owner-chip" style="--owner-color:${ownerColor(getOwnerForTeam(match.away))}">${escapeHtml(getOwnerForTeam(match.away) || "Unowned")}</span>
+          </div>
+        </section>
+
+        <section>
+          <div class="card-title">Selected Players</div>
+          ${
+            selectedPlayerRows.length
+              ? `<ul class="today-list">${selectedPlayerRows.map((player) => `<li><strong>${escapeHtml(player.name)}</strong><span>${escapeHtml(player.team)} + ${escapeHtml(player.owner)}</span></li>`).join("")}</ul>`
+              : `<div class="muted">No selected players in this match.</div>`
+          }
+        </section>
+
+        <section>
+          <div class="card-title">${isCompletedMatch(match) ? "Points Received" : "Available Points"}</div>
+          ${
+            isCompletedMatch(match)
+              ? scoredDetails.length
+                ? `<ul class="detail-list">${scoredDetails.map((detail) => detailItem(detail, detail.owner)).join("")}</ul>`
+                : `<div class="muted">No pool points from this result.</div>`
+              : `<ul class="today-list">${todayOpportunityLines(match).map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>`
+          }
+        </section>
+      </div>
+    </article>
+  `;
+}
+
+function todayOpportunityLines(match) {
+  const impact = getMatchImpact(match, state);
+  const playerGoalLines = selectedPlayersForMatch(match).map((player) => `${player.name} goal: ${player.owner} +2`);
+  return [...impact.possible, ...playerGoalLines];
 }
 
 function updateTeamPanel(match, side) {

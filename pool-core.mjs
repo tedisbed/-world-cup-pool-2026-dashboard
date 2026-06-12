@@ -384,6 +384,10 @@ export function getMatchesByDate(state = createEmptyState()) {
   return [...groupsByDate.entries()].map(([date, matches]) => ({ date, matches }));
 }
 
+export function getMatchesForDate(state = createEmptyState(), date = "") {
+  return getAllMatches(state).filter((match) => match.date === date);
+}
+
 export function isCompletedMatch(match) {
   return match.status === "final" && hasScore(match.homeScore) && hasScore(match.awayScore);
 }

@@ -176,6 +176,36 @@ h1 {
   background: #fff;
 }
 
+.leader-detail {
+  display: block;
+}
+
+.leader-detail summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.leader-detail summary::-webkit-details-marker {
+  display: none;
+}
+
+.leader-detail[open] .leader-row {
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.leader-breakdown {
+  max-height: 260px;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-top: 0;
+  border-left: 5px solid var(--owner-color, var(--teal));
+  border-bottom-right-radius: 8px;
+  border-bottom-left-radius: 8px;
+  background: #fbfcfe;
+}
+
 .rank {
   display: grid;
   width: 28px;
@@ -357,6 +387,82 @@ h1 {
   grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
   gap: 12px;
   align-items: start;
+}
+
+.today-layout {
+  display: grid;
+  gap: 12px;
+}
+
+.today-summary {
+  box-shadow: none;
+}
+
+.today-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.today-metrics div {
+  min-height: 74px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fbfcfe;
+}
+
+.today-metrics strong {
+  display: block;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.today-metrics span {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.today-match {
+  box-shadow: none;
+}
+
+.today-match-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.today-columns {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.9fr) minmax(180px, 0.9fr) minmax(240px, 1.2fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.today-list {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.today-list li {
+  display: grid;
+  gap: 2px;
+}
+
+.today-list strong {
+  color: var(--ink);
 }
 
 .spotlight {
@@ -801,6 +907,10 @@ th {
     grid-template-columns: 1fr;
   }
 
+  .today-columns {
+    grid-template-columns: 1fr;
+  }
+
   .status-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -835,6 +945,11 @@ th {
   }
 
   .status-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .today-match-main,
+  .today-metrics {
     grid-template-columns: 1fr;
   }
 

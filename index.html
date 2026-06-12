@@ -35,6 +35,7 @@
         <section class="status-strip" id="status-strip"></section>
 
         <nav class="tabs" aria-label="Dashboard sections">
+          <button class="tab" data-tab="today" type="button">Today</button>
           <button class="tab active" data-tab="matches" type="button">Matches</button>
           <button class="tab" data-tab="update" type="button">Update Score</button>
           <button class="tab" data-tab="awards" type="button">Awards</button>
@@ -42,6 +43,10 @@
           <button class="tab" data-tab="draft" type="button">Draft</button>
           <button class="tab" data-tab="data" type="button">Data</button>
         </nav>
+
+        <section class="tab-panel" id="tab-today">
+          <div id="today-panel"></div>
+        </section>
 
         <section class="tab-panel active" id="tab-matches">
           <div class="match-toolbar">
