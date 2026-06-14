@@ -11,7 +11,9 @@ import {
   getMatchesForDate,
   getOwnerForTeam,
   getOwnerOpportunityRows,
+  getPlayerGoalTotals,
   getQualifiedTeams,
+  getRuleGroups,
   getSelectedPlayers,
   getTeam,
   getThirdPlaceTable,
@@ -50,6 +52,8 @@ const filters = {
   status: "all",
 };
 
+normalizeStaticMarkup();
+
 const dom = {
   leaderboard: document.getElementById("leaderboard"),
   todayPanel: document.getElementById("today-panel"),
@@ -69,6 +73,26 @@ const dom = {
 
 init();
 
+function normalizeStaticMarkup() {
+  document.querySelector('[data-tab="update"]')?.remove();
+  document.querySelector("#tab-update")?.remove();
+  document.querySelector('[data-tab="awards"]')?.remove();
+  document.querySelector("#tab-awards")?.remove();
+
+  const legacyDataTab = document.querySelector('[data-tab="data"]');
+  if (legacyDataTab) {
+    legacyDataTab.dataset.tab = "rules";
+    legacyDataTab.textContent = "Rules Reference";
+  }
+
+  const legacyDataPanel = document.getElementById("tab-data");
+  if (legacyDataPanel) {
+    legacyDataPanel.id = "tab-rules";
+    const panel = legacyDataPanel.querySelector("#data-panel");
+    if (panel) panel.id = "rules-panel";
+  }
+}
+
 async function init() {
   state = await loadInitialState();
   selectedMatchId = firstRelevantMatch()?.id ?? fixtures[0].id;
@@ -79,6 +103,7 @@ async function init() {
 
 function attachEvents() {
   document.querySelector(".tabs").addEventListener("click", (event) => {
+    normalizeStaticMarkup();
     const tab = event.target.closest("[data-tab]");
     if (!tab) return;
     activeTab = tab.dataset.tab;
@@ -109,10 +134,6 @@ function attachEvents() {
 
   document.body.addEventListener("click", handleClick);
 
-  document.getElementById("export-json").addEventListener("click", exportJson);
-  document.getElementById("export-score-csv").addEventListener("click", exportScoreCsv);
-  document.getElementById("import-json").addEventListener("change", importJsonFile);
-  document.getElementById("reset-state").addEventListener("click", resetState);
 }
 
 function populateFilters() {
@@ -350,11 +371,13 @@ function renderImpact() {
 }
 
 function renderGroups(result) {
+  const groupsPanel = document.getElementById("groups-panel");
+  if (!groupsPanel) return;
   const standings = getGroupStandings(state);
   const qualified = getQualifiedTeams(state);
   const thirdTable = getThirdPlaceTable(state);
 
-  dom.groupsPanel.innerHTML = `
+  groupsPanel.innerHTML = `
     <div class="group-grid">
       ${Object.entries(standings)
         .map(([group, rows]) => groupTable(group, rows, qualified))
@@ -382,48 +405,71 @@ function renderGroups(result) {
 }
 
 function renderDraft() {
-  dom.draftPanel.innerHTML = `
-    <section class="card">
-      <div class="section-title">
-        <span>Draft Board</span>
-        <small>Gold cells are selected players</small>
-      </div>
-      <div class="draft-table-wrap">
-        <table class="draft-table">
-          <thead>
-            <tr>
-              <th>Round</th>
-              ${owners.map((owner) => `<th>${escapeHtml(owner)}</th>`).join("")}
-            </tr>
-          </thead>
-          <tbody>
-            ${[1, 2, 3, 4, 5, 6, 7]
-              .map(
-                (round) => `
-                  <tr>
-                    <td><strong>Round ${round}</strong></td>
-                    ${owners
-                      .map((owner) => {
-                        const pick = draftPicks.find((entry) => entry.owner === owner && entry.round === round);
-                        return `<td>${draftPickCell(pick)}</td>`;
-                      })
-                      .join("")}
-                  </tr>
-                `,
-              )
-              .join("")}
-          </tbody>
-        </table>
-      </div>
-    </section>
+  const draftPanel = document.getElementById("draft-panel");
+  if (!draftPanel) return;
+  const playerGoalTotals = getPlayerGoalTotals(state);
+  const maxGoals = Math.max(0, ...selectedPlayers.map((player) => Number(playerGoalTotals[player.name] || 0)));
+  const topScorers = selectedPlayers.filter((player) => maxGoals > 0 && Number(playerGoalTotals[player.name] || 0) === maxGoals);
+  const playerRows = [...selectedPlayers].sort(
+    (a, b) =>
+      Number(playerGoalTotals[b.name] || 0) - Number(playerGoalTotals[a.name] || 0) ||
+      a.name.localeCompare(b.name),
+  );
+
+  draftPanel.innerHTML = `
+    <div class="draft-grid">
+      <section class="card">
+        <div class="section-title">
+          <span>Selected Player Goals</span>
+          <small>${topScorers.length ? `+${rules.individualAwards.selectedPlayerMostGoals}: ${topScorers.map((player) => player.name).join(", ")}` : "No goals yet"}</small>
+        </div>
+        ${playerRows.map((player) => playerGoalRow(player, playerGoalTotals)).join("")}
+      </section>
+
+      <section class="card">
+        <div class="section-title">
+          <span>Draft Board</span>
+          <small>Gold cells are selected players</small>
+        </div>
+        <div class="draft-table-wrap">
+          <table class="draft-table">
+            <thead>
+              <tr>
+                <th>Round</th>
+                ${owners.map((owner) => `<th>${escapeHtml(owner)}</th>`).join("")}
+              </tr>
+            </thead>
+            <tbody>
+              ${[1, 2, 3, 4, 5, 6, 7]
+                .map(
+                  (round) => `
+                    <tr>
+                      <td><strong>Round ${round}</strong></td>
+                      ${owners
+                        .map((owner) => {
+                          const pick = draftPicks.find((entry) => entry.owner === owner && entry.round === round);
+                          return `<td>${draftPickCell(pick)}</td>`;
+                        })
+                        .join("")}
+                    </tr>
+                  `,
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
   `;
 }
 
 function renderRules() {
-  dom.rulesPanel.innerHTML = `
+  const rulesPanel = document.getElementById("rules-panel");
+  if (!rulesPanel) return;
+  rulesPanel.innerHTML = `
     <section class="data-box rules-reference">
       <h3>Rules Reference</h3>
-      <div class="rules-list">${ruleLines().join("")}</div>
+      <div class="rules-group-grid">${getRuleGroups().map(ruleGroup).join("")}</div>
       <p class="muted">
         Fixture names are normalized to the pool sheet. Schedule source:
         <a href="https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/match-schedule-fixtures-results-teams-stadiums">FIFA match schedule</a>.
@@ -726,36 +772,25 @@ function detailItem(detail, owner = "") {
   `;
 }
 
-function ruleLines() {
-  return [
-    [rules.allEvents.winByTwo, "Win any match by 2+"],
-    [rules.allEvents.loseByTwo, "Lose any match by 2+"],
-    [rules.allEvents.penaltyWin, "Win on penalties"],
-    [rules.groupStage.win, "Group-stage win"],
-    [rules.groupStage.draw, "Group-stage draw"],
-    [rules.groupStage.winGroup, "Win group"],
-    [rules.groupStage.advance, "Advance to knockout"],
-    [rules.groupStage.bestFourGoalDifference, "Top-4 group GD"],
-    [rules.groupStage.worstFourGoalDifference, "Bottom-4 group GD"],
-    [rules.groupStage.scorelessGroup, "Scoreless group stage"],
-    [rules.knockoutStage.r32, "Win Round of 32"],
-    [rules.knockoutStage.r16, "Win Round of 16"],
-    [rules.knockoutStage.qf, "Win quarterfinal"],
-    [rules.knockoutStage.sf, "Win semifinal"],
-    [rules.knockoutStage.final, "Win World Cup"],
-    [rules.individualAwards.selectedPlayerGoal, "Selected-player goal"],
-    [rules.individualAwards.selectedPlayerAward, "Selected-player award"],
-    [rules.individualAwards.selectedTeamHasAwardWinner, "Team has award winner"],
-    [rules.nationPoints.lastFromGroup, "Last from group"],
-    [rules.nationPoints.lastFromFederation, "Last from federation"],
-  ].map(
-    ([points, label]) => `
-      <div class="rule-line">
-        <span class="${points < 0 ? "point-chip negative" : "point-chip"}">${points > 0 ? "+" : ""}${points}</span>
-        <span>${escapeHtml(label)}</span>
+function ruleGroup(group) {
+  return `
+    <section class="rules-group">
+      <div class="section-title">
+        <span>${escapeHtml(group.title)}</span>
+        <small>${escapeHtml(group.note)}</small>
       </div>
-    `,
-  );
+      <div class="rules-list">${group.rules.map(ruleLine).join("")}</div>
+    </section>
+  `;
+}
+
+function ruleLine({ points, label }) {
+  return `
+    <div class="rule-line">
+      <span class="${points < 0 ? "point-chip negative" : "point-chip"}">${points > 0 ? "+" : ""}${points}</span>
+      <span>${escapeHtml(label)}</span>
+    </div>
+  `;
 }
 
 function handleClick(event) {
@@ -782,9 +817,6 @@ function handleClick(event) {
     render();
     return;
   }
-
-  if (action === "export-json") exportJson();
-  if (action === "export-score-csv") exportScoreCsv();
 }
 
 function unlockAdmin() {

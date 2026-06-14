@@ -60,6 +60,69 @@ export const awardLabels = {
   bestYoungPlayer: "Best Young Player",
 };
 
+export function getRuleGroups() {
+  return [
+    {
+      title: "Match Results",
+      note: "Applies across group and knockout matches.",
+      rules: [
+        { points: rules.allEvents.winByTwo, label: "Win any match by 2+" },
+        { points: rules.allEvents.loseByTwo, label: "Lose any match by 2+" },
+        { points: rules.allEvents.penaltyWin, label: "Win on penalties" },
+      ],
+    },
+    {
+      title: "Group Stage",
+      note: "Points tied to group-match results and final group standings.",
+      rules: [
+        { points: rules.groupStage.win, label: "Group-stage win" },
+        { points: rules.groupStage.draw, label: "Group-stage draw" },
+        { points: rules.groupStage.winGroup, label: "Win group" },
+        { points: rules.groupStage.advance, label: "Advance to knockout" },
+        { points: rules.groupStage.bestFourGoalDifference, label: "Top-4 group GD" },
+        { points: rules.groupStage.worstFourGoalDifference, label: "Bottom-4 group GD" },
+        { points: rules.groupStage.scorelessGroup, label: "Scoreless group stage" },
+      ],
+    },
+    {
+      title: "Knockout Stage",
+      note: "Points for each drafted team win by round.",
+      rules: [
+        { points: rules.knockoutStage.r32, label: "Win Round of 32" },
+        { points: rules.knockoutStage.r16, label: "Win Round of 16" },
+        { points: rules.knockoutStage.qf, label: "Win quarterfinal" },
+        { points: rules.knockoutStage.sf, label: "Win semifinal" },
+        { points: rules.knockoutStage.final, label: "Win World Cup" },
+      ],
+    },
+    {
+      title: "Selected Players",
+      note: "Ways drafted individual players can add points.",
+      rules: [
+        { points: rules.individualAwards.selectedPlayerGoal, label: "Selected-player goal" },
+        { points: rules.individualAwards.selectedPlayerMostGoals, label: "Top selected-player scorer" },
+        { points: rules.individualAwards.selectedPlayersTeamWins, label: "Selected player's team wins" },
+      ],
+    },
+    {
+      title: "Tournament Awards",
+      note: "Award results for drafted players and drafted teams.",
+      rules: [
+        { points: rules.individualAwards.selectedPlayerAward, label: "Selected-player award" },
+        { points: rules.individualAwards.selectedTeamHasAwardWinner, label: "Team has award winner" },
+      ],
+    },
+    {
+      title: "Nation Points",
+      note: "Late-tournament bonuses tied to country and federation performance.",
+      rules: [
+        { points: rules.nationPoints.lastFromGroup, label: "Last from group" },
+        { points: rules.nationPoints.lastFromFederation, label: "Last from federation" },
+      ],
+    },
+  ];
+}
+
 export const draftPicks = [
   { owner: "Sherman", round: 1, type: "team", name: "Spain" },
   { owner: "Sherman", round: 2, type: "team", name: "United States" },

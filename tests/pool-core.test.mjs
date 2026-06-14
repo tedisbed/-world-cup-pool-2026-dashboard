@@ -9,6 +9,7 @@ import {
   getOwnerOpportunityRows,
   getPlayerGoalTotals,
   getRecentPointEvents,
+  getRuleGroups,
 } from "../pool-core.mjs";
 
 test("match-level selected-player goals roll into totals and scoring", () => {
@@ -62,4 +63,23 @@ test("owner opportunity rows estimate visible remaining upside", () => {
   assert.equal(sherman.maxVisible, sherman.current + sherman.remainingVisible);
   assert.ok(sherman.teamOpportunity > 0);
   assert.ok(sherman.playerOpportunity > 0);
+});
+
+test("rules reference groups related scoring paths", () => {
+  const groups = getRuleGroups();
+
+  assert.deepEqual(
+    groups.map((group) => group.title),
+    ["Match Results", "Group Stage", "Knockout Stage", "Selected Players", "Tournament Awards", "Nation Points"],
+  );
+
+  const selectedPlayers = groups.find((group) => group.title === "Selected Players");
+  assert.deepEqual(
+    selectedPlayers.rules.map((rule) => rule.label),
+    ["Selected-player goal", "Top selected-player scorer", "Selected player's team wins"],
+  );
+
+  const groupStage = groups.find((group) => group.title === "Group Stage");
+  assert.ok(groupStage.rules.some((rule) => rule.label === "Advance to knockout"));
+  assert.ok(groupStage.rules.some((rule) => rule.points < 0 && rule.label === "Scoreless group stage"));
 });

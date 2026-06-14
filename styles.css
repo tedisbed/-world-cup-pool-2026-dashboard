@@ -881,6 +881,23 @@ th {
   margin-top: 10px;
 }
 
+.rules-group-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.rules-group {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
+}
+
+.rules-group .rules-list {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
 .rule-line {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
