@@ -415,11 +415,14 @@ function renderGroups(result) {
     <section class="card" style="margin-top:12px">
       <div class="section-title">
         <span>Third-Place Table</span>
-        <small>${areAllGroupsComplete(state) ? "Top 8 advance" : "Activates when all groups are complete"}</small>
+        <small>Top 8 third-place teams advance; 9-12 are out</small>
       </div>
       ${
         thirdTable.length
-          ? standingsTable(thirdTable.map((row, index) => ({ ...row, rank: index + 1 })), qualified, "standings-table")
+          ? standingsTable(thirdTable.map((row, index) => ({ ...row, rank: index + 1 })), qualified, "standings-table", {
+              showThirdPlaceStatus: true,
+              allGroupsComplete: areAllGroupsComplete(state),
+            })
           : `<div class="empty-state">No completed groups yet.</div>`
       }
     </section>
@@ -567,7 +570,7 @@ function renderScoreless() {
         <small>${tracker.summary.scoreless} still scoreless, ${tracker.summary.scored} cleared</small>
       </div>
       <div class="scoreless-summary">
-        ${scorelessSummaryChip("Still", tracker.summary.scoreless)}
+        ${scorelessSummaryChip("Waiting", tracker.summary.scoreless)}
         ${scorelessSummaryChip("Danger", tracker.summary.danger + tracker.summary.locked)}
         ${scorelessSummaryChip("Cleared", tracker.summary.scored)}
       </div>
@@ -859,7 +862,11 @@ function standingsTable(rows, qualified, className = "", options = {}) {
         ${rows
           .map(
             (row) => {
-              const advancement = options.showAdvancement ? advancementStatus(row, qualified, options.allGroupsComplete) : null;
+              const advancement = options.showThirdPlaceStatus
+                ? thirdPlaceStatus(row, options.allGroupsComplete)
+                : options.showAdvancement
+                  ? advancementStatus(row, qualified, options.allGroupsComplete)
+                  : null;
               return `
               <tr class="${advancement ? `advancement-${advancement.tone}` : qualified.has(row.team) ? "qualified-row" : ""}">
                 <td>
@@ -889,12 +896,20 @@ function advancementStatus(row, qualified, allGroupsComplete) {
 export function getAdvancementStatus(row, qualified, allGroupsComplete) {
   if (qualified.has(row.team)) {
     return row.rank === 3
-      ? { label: "IN 3RD", tone: "advancing" }
-      : { label: "IN", tone: "advancing" };
+      ? { label: "ADV 3RD", tone: "advancing" }
+      : { label: "ADVANCING", tone: "advancing" };
   }
-  if (!allGroupsComplete && row.rank <= 2) return { label: "IN", tone: "advancing" };
-  if (!allGroupsComplete && row.rank === 3) return { label: "3RD", tone: "bubble" };
+  if (!allGroupsComplete && row.rank <= 2) return { label: "ADVANCING", tone: "advancing" };
+  if (!allGroupsComplete && row.rank === 3) return { label: "3RD WATCH", tone: "bubble" };
+  if (row.rank === 3) return { label: "OUT 3RD", tone: "out" };
   return { label: "OUT", tone: "out" };
+}
+
+function thirdPlaceStatus(row, allGroupsComplete) {
+  if (row.rank <= 8) {
+    return { label: allGroupsComplete ? "ADVANCES" : "TOP 8 NOW", tone: "advancing" };
+  }
+  return { label: "OUT 3RD", tone: "out" };
 }
 
 function bracketRound(round) {

@@ -176,3 +176,17 @@ test("nation point standings show final last-standing winner after champion is c
   assert.equal(groupC.status, "Last standing: Brazil");
   assert.ok(groupC.contenders.find((row) => row.team === "Brazil" && row.label === "Champion"));
 });
+
+test("single-team federation survivor points score immediately", () => {
+  const result = calculateScores(createEmptyState());
+  const palutsis = result.ownerTotals.find((row) => row.owner === "Palutsis");
+
+  assert.ok(
+    palutsis.details.some(
+      (detail) =>
+        detail.category === "Survivor Points" &&
+        detail.reason === "New Zealand last standing from OFC" &&
+        detail.points === 5,
+    ),
+  );
+});

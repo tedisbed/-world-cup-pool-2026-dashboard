@@ -1089,8 +1089,6 @@ function goalsForTeamInMatch(match, team) {
 }
 
 function scoreNationBonuses(state, add) {
-  if (!areAllGroupsComplete(state)) return;
-
   const progress = getTeamProgress(state);
   for (const group of groups) {
     awardLastStanding(
