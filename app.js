@@ -46,7 +46,7 @@ const ownerColors = {
 let state = createEmptyState();
 let adminUnlocked = sessionStorage.getItem(adminStorageKey) === "true";
 let selectedMatchId = fixtures[0].id;
-let activeTab = "matches";
+let activeTab = "today";
 const filters = {
   search: "",
   owner: "all",
@@ -118,6 +118,7 @@ function attachEvents() {
     document.querySelectorAll(".tab-panel").forEach((panel) => {
       panel.classList.toggle("active", panel.id === `tab-${activeTab}`);
     });
+    renderActiveTab();
   });
 
   dom.search.addEventListener("input", (event) => {
@@ -169,6 +170,22 @@ function render() {
   renderPlayerGoals();
   renderDraft();
   renderRules();
+}
+
+function renderActiveTab() {
+  const result = calculateScores(state);
+  if (activeTab === "today") renderToday(result);
+  if (activeTab === "pulse") renderPulse();
+  if (activeTab === "matches") {
+    renderSpotlight();
+    renderMatches();
+  }
+  if (activeTab === "groups") renderGroups(result);
+  if (activeTab === "bracket") renderBracket();
+  if (activeTab === "nation-points") renderNationPoints();
+  if (activeTab === "goals") renderPlayerGoals();
+  if (activeTab === "draft") renderDraft();
+  if (activeTab === "rules") renderRules();
 }
 
 function renderLeaderboard(result) {
@@ -401,13 +418,6 @@ function renderGroups(result) {
           ? standingsTable(thirdTable.map((row, index) => ({ ...row, rank: index + 1 })), qualified, "standings-table")
           : `<div class="empty-state">No completed groups yet.</div>`
       }
-    </section>
-    <section class="card" style="margin-top:12px">
-      <div class="section-title">
-        <span>Nation Points Watch</span>
-        <small>Last from group +7, last from federation +5</small>
-      </div>
-      ${nationWatch(result)}
     </section>
   `;
 }
@@ -844,33 +854,6 @@ function nationContenderRow(row) {
       </div>
       <span class="owner-chip" style="--owner-color:${ownerColor(row.owner)}">${escapeHtml(row.owner)}</span>
     </div>
-  `;
-}
-
-function nationWatch(result) {
-  const rows = Object.values(result.teamProgress)
-    .sort((a, b) => b.rank - a.rank || Number(b.alive) - Number(a.alive) || a.team.localeCompare(b.team))
-    .slice(0, 16);
-
-  return `
-    <table>
-      <thead><tr><th>Team</th><th>State</th><th>Group</th><th>Fed</th><th>Owner</th></tr></thead>
-      <tbody>
-        ${rows
-          .map(
-            (row) => `
-              <tr>
-                <td>${escapeHtml(row.team)}</td>
-                <td>${escapeHtml(row.label)}</td>
-                <td>${escapeHtml(row.group)}</td>
-                <td>${escapeHtml(row.federation)}</td>
-                <td><span class="owner-chip" style="--owner-color:${ownerColor(getOwnerForTeam(row.team))}">${escapeHtml(getOwnerForTeam(row.team))}</span></td>
-              </tr>
-            `,
-          )
-          .join("")}
-      </tbody>
-    </table>
   `;
 }
 

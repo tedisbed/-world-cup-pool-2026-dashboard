@@ -26,9 +26,9 @@
         <section class="status-strip" id="status-strip"></section>
 
         <nav class="tabs" aria-label="Dashboard sections">
-          <button class="tab" data-tab="today" type="button">Today</button>
+          <button class="tab active" data-tab="today" type="button">Today</button>
           <button class="tab" data-tab="pulse" type="button">Pulse</button>
-          <button class="tab active" data-tab="matches" type="button">Matches</button>
+          <button class="tab" data-tab="matches" type="button">Matches</button>
           <button class="tab" data-tab="groups" type="button">Groups</button>
           <button class="tab" data-tab="bracket" type="button">Bracket</button>
           <button class="tab" data-tab="nation-points" type="button">Nation Points</button>
@@ -37,7 +37,7 @@
           <button class="tab" data-tab="rules" type="button">Rules</button>
         </nav>
 
-        <section class="tab-panel" id="tab-today">
+        <section class="tab-panel active" id="tab-today">
           <div id="today-panel"></div>
         </section>
 
@@ -45,7 +45,7 @@
           <div id="pulse-panel"></div>
         </section>
 
-        <section class="tab-panel active" id="tab-matches">
+        <section class="tab-panel" id="tab-matches">
           <div class="match-toolbar">
             <input id="search" type="search" placeholder="Search team, owner, venue" />
             <select id="owner-filter" aria-label="Owner filter"></select>
@@ -94,6 +94,6 @@
       </section>
     </main>
 
-    <script type="module" src="./app.js"></script>
+    <script type="module" src="./app.js?v=2026-06-14-tabs"></script>
   </body>
 </html>
