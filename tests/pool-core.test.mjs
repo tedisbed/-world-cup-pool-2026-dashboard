@@ -179,6 +179,7 @@ test("scoreless tracker keeps scoreless teams ahead of teams that have scored", 
 
 test("scoreless owner tracker groups each owner's drafted teams", () => {
   const state = createEmptyState();
+  state.matches["g-a-01"] = { homeScore: 2, awayScore: 0, status: "final" };
   state.matches["g-h-02"] = { homeScore: 2, awayScore: 0, status: "final" };
 
   const tracker = getScorelessOwnerTracker(state);
@@ -186,10 +187,12 @@ test("scoreless owner tracker groups each owner's drafted teams", () => {
 
   assert.deepEqual(
     sherman.teams.map((row) => row.team),
-    ["Colombia", "South Africa", "Sweden", "Tunisia", "United States", "Spain"],
+    ["South Africa", "Colombia", "Sweden", "Tunisia", "United States", "Spain"],
   );
   assert.equal(sherman.waiting, 5);
   assert.equal(sherman.cleared, 1);
+  assert.equal(sherman.playedScoreless, 1);
+  assert.equal(sherman.notPlayed, 4);
   assert.equal(sherman.teams.find((row) => row.team === "Spain").status, "cleared");
 });
 

@@ -1184,6 +1184,37 @@ button:disabled {
   font-weight: 900;
 }
 
+.scoreless-subsection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #d8e5f3;
+  border-radius: 8px;
+  background: #f4f8fc;
+  padding: 9px 10px;
+}
+
+.scoreless-subsection.teams {
+  margin-top: 4px;
+  border-color: #ead9bf;
+  background: #fffaf0;
+}
+
+.scoreless-subsection strong,
+.scoreless-subsection span {
+  display: block;
+}
+
+.scoreless-subsection strong {
+  font-size: 13px;
+}
+
+.scoreless-subsection span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .scoreless-owner-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -1216,7 +1247,7 @@ button:disabled {
   color: var(--muted);
   font-size: 12px;
   font-weight: 900;
-  white-space: nowrap;
+  text-align: right;
 }
 
 .scoreless-owner-teams {
@@ -1230,10 +1261,10 @@ button:disabled {
   align-items: center;
   gap: 5px;
   min-height: 26px;
-  border: 1px solid #f0c7a2;
+  border: 1px solid #bed0e5;
   border-radius: 999px;
-  background: #fffaf0;
-  color: #734b08;
+  background: #f3f7fc;
+  color: #475569;
   padding: 4px 8px;
   font-size: 12px;
   font-weight: 900;
@@ -1244,11 +1275,25 @@ button:disabled {
   line-height: 1;
 }
 
+.scoreless-owner-team.played {
+  border-color: #f0c7a2;
+  background: #fffaf0;
+  color: #734b08;
+}
+
+.scoreless-owner-team.played span {
+  color: #b7791f;
+}
+
 .scoreless-owner-team.cleared {
   border-color: #cbd5e1;
   background: #f4f6f8;
   color: #64748b;
   opacity: 0.72;
+}
+
+.scoreless-owner-team.cleared span {
+  color: #166529;
 }
 
 .scoreless-grid {

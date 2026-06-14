@@ -1110,6 +1110,8 @@ export function getScorelessOwnerTracker(inputState = createEmptyState()) {
       owner,
       waiting: ownerTeams.filter((row) => row.goals === 0).length,
       cleared: ownerTeams.filter((row) => row.goals > 0).length,
+      playedScoreless: ownerTeams.filter((row) => row.goals === 0 && row.completed > 0).length,
+      notPlayed: ownerTeams.filter((row) => row.goals === 0 && row.completed === 0).length,
       teams: ownerTeams,
     };
   });

@@ -663,8 +663,20 @@ function renderScoreless() {
         ${scorelessSummaryChip("Danger", tracker.summary.danger + tracker.summary.locked)}
         ${scorelessSummaryChip("Cleared", tracker.summary.scored)}
       </div>
+      <div class="scoreless-subsection">
+        <div>
+          <strong>Owner Tracker</strong>
+          <span>Drafted teams by person</span>
+        </div>
+      </div>
       <div class="scoreless-owner-grid">
         ${ownerTracker.map(scorelessOwnerCard).join("")}
+      </div>
+      <div class="scoreless-subsection teams">
+        <div>
+          <strong>Team Tracker</strong>
+          <span>All World Cup teams</span>
+        </div>
       </div>
       <div class="scoreless-grid">
         ${tracker.teams.map(scorelessTeamCard).join("")}
@@ -687,7 +699,7 @@ function scorelessOwnerCard(row) {
     <article class="scoreless-owner-card" style="--owner-color:${ownerColor(row.owner)}">
       <div class="scoreless-owner-head">
         <strong>${escapeHtml(row.owner)}</strong>
-        <span>${row.waiting} waiting / ${row.cleared} scored</span>
+        <span>${row.notPlayed} not played / ${row.playedScoreless} no goal / ${row.cleared} cleared</span>
       </div>
       <div class="scoreless-owner-teams">
         ${row.teams.map(scorelessOwnerTeam).join("")}
@@ -697,9 +709,16 @@ function scorelessOwnerCard(row) {
 }
 
 function scorelessOwnerTeam(row) {
+  const state = row.goals > 0 ? "cleared" : row.completed > 0 ? "played" : "not-played";
+  const marker = row.goals > 0 ? "✓" : row.completed > 0 ? "!" : "•";
+  const label = row.goals > 0
+    ? `${row.goals} goal${row.goals === 1 ? "" : "s"}`
+    : row.completed > 0
+      ? `${row.completed} played, no goal`
+      : "Not played";
   return `
-    <span class="scoreless-owner-team ${escapeHtml(row.status)}" title="${escapeHtml(`${row.team}: ${row.goals ? `${row.goals} goal${row.goals === 1 ? "" : "s"}` : "waiting for first goal"}`)}">
-      <span>${row.goals > 0 ? "✓" : "•"}</span>
+    <span class="scoreless-owner-team ${escapeHtml(state)}" title="${escapeHtml(`${row.team}: ${label}`)}">
+      <span>${escapeHtml(marker)}</span>
       ${escapeHtml(row.team)}
     </span>
   `;
