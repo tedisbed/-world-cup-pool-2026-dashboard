@@ -1695,6 +1695,30 @@ th {
     padding-inline: 10px;
   }
 
+  .workbench {
+    order: 1;
+  }
+
+  .leaderboard-panel {
+    order: 2;
+  }
+
+  .tabs {
+    flex-wrap: nowrap;
+    gap: 7px;
+    margin-inline: -2px;
+    overflow-x: auto;
+    padding: 0 2px 8px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    white-space: nowrap;
+  }
+
   .match-toolbar,
   .match-card,
   .knockout-form {
