@@ -12,6 +12,7 @@ import {
   getPlayerGoalTotals,
   getRecentPointEvents,
   getRuleGroups,
+  getScorelessOwnerTracker,
   getScorelessGroupTracker,
   getProjectedThirdPlaceTable,
   getThirdPlaceTable,
@@ -174,6 +175,22 @@ test("scoreless tracker keeps scoreless teams ahead of teams that have scored", 
     ["blank", "pending", "pending"],
   );
   assert.ok(tracker.teams.findIndex((row) => row.team === "South Africa") < tracker.teams.findIndex((row) => row.team === "Mexico"));
+});
+
+test("scoreless owner tracker groups each owner's drafted teams", () => {
+  const state = createEmptyState();
+  state.matches["g-h-02"] = { homeScore: 2, awayScore: 0, status: "final" };
+
+  const tracker = getScorelessOwnerTracker(state);
+  const sherman = tracker.find((row) => row.owner === "Sherman");
+
+  assert.deepEqual(
+    sherman.teams.map((row) => row.team),
+    ["Colombia", "South Africa", "Sweden", "Tunisia", "United States", "Spain"],
+  );
+  assert.equal(sherman.waiting, 5);
+  assert.equal(sherman.cleared, 1);
+  assert.equal(sherman.teams.find((row) => row.team === "Spain").status, "cleared");
 });
 
 test("nation point standings show final last-standing winner after champion is crowned", () => {

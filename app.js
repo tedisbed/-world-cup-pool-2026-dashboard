@@ -17,6 +17,7 @@ import {
   getProjectedThirdPlaceTable,
   getQualifiedTeams,
   getRuleGroups,
+  getScorelessOwnerTracker,
   getScorelessGroupTracker,
   getSelectedPlayers,
   getTeam,
@@ -649,6 +650,7 @@ function renderScoreless() {
   const scorelessPanel = document.getElementById("scoreless-panel");
   if (!scorelessPanel) return;
   const tracker = getScorelessGroupTracker(state);
+  const ownerTracker = getScorelessOwnerTracker(state);
 
   scorelessPanel.innerHTML = `
     <section class="card scoreless-card">
@@ -660,6 +662,9 @@ function renderScoreless() {
         ${scorelessSummaryChip("Waiting", tracker.summary.scoreless)}
         ${scorelessSummaryChip("Danger", tracker.summary.danger + tracker.summary.locked)}
         ${scorelessSummaryChip("Cleared", tracker.summary.scored)}
+      </div>
+      <div class="scoreless-owner-grid">
+        ${ownerTracker.map(scorelessOwnerCard).join("")}
       </div>
       <div class="scoreless-grid">
         ${tracker.teams.map(scorelessTeamCard).join("")}
@@ -674,6 +679,29 @@ function scorelessSummaryChip(label, value) {
       <strong>${value}</strong>
       <span>${escapeHtml(label)}</span>
     </div>
+  `;
+}
+
+function scorelessOwnerCard(row) {
+  return `
+    <article class="scoreless-owner-card" style="--owner-color:${ownerColor(row.owner)}">
+      <div class="scoreless-owner-head">
+        <strong>${escapeHtml(row.owner)}</strong>
+        <span>${row.waiting} waiting / ${row.cleared} scored</span>
+      </div>
+      <div class="scoreless-owner-teams">
+        ${row.teams.map(scorelessOwnerTeam).join("")}
+      </div>
+    </article>
+  `;
+}
+
+function scorelessOwnerTeam(row) {
+  return `
+    <span class="scoreless-owner-team ${escapeHtml(row.status)}" title="${escapeHtml(`${row.team}: ${row.goals ? `${row.goals} goal${row.goals === 1 ? "" : "s"}` : "waiting for first goal"}`)}">
+      <span>${row.goals > 0 ? "✓" : "•"}</span>
+      ${escapeHtml(row.team)}
+    </span>
   `;
 }
 

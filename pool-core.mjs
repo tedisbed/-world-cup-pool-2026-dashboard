@@ -1090,6 +1090,31 @@ export function getScorelessGroupTracker(inputState = createEmptyState()) {
   };
 }
 
+export function getScorelessOwnerTracker(inputState = createEmptyState()) {
+  const teamRows = new Map(getScorelessGroupTracker(inputState).teams.map((row) => [row.team, row]));
+  const statusRank = { locked: 0, danger: 1, open: 2, cleared: 3 };
+
+  return owners.map((owner) => {
+    const ownerTeams = draftPicks
+      .filter((pick) => pick.owner === owner && pick.type === "team")
+      .map((pick) => teamRows.get(pick.name))
+      .filter(Boolean)
+      .sort(
+        (a, b) =>
+          statusRank[a.status] - statusRank[b.status] ||
+          b.completed - a.completed ||
+          a.team.localeCompare(b.team),
+      );
+
+    return {
+      owner,
+      waiting: ownerTeams.filter((row) => row.goals === 0).length,
+      cleared: ownerTeams.filter((row) => row.goals > 0).length,
+      teams: ownerTeams,
+    };
+  });
+}
+
 function goalsForTeamInMatch(match, team) {
   if (match.home === team) return numberOrZero(match.homeScore);
   if (match.away === team) return numberOrZero(match.awayScore);

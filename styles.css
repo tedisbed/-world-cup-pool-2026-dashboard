@@ -1184,6 +1184,73 @@ button:disabled {
   font-weight: 900;
 }
 
+.scoreless-owner-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+}
+
+.scoreless-owner-card {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--owner-color);
+  border-radius: 8px;
+  background: #fbfcfe;
+  padding: 10px;
+}
+
+.scoreless-owner-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.scoreless-owner-head strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.scoreless-owner-head span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.scoreless-owner-teams {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.scoreless-owner-team {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  border: 1px solid #f0c7a2;
+  border-radius: 999px;
+  background: #fffaf0;
+  color: #734b08;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.scoreless-owner-team span {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.scoreless-owner-team.cleared {
+  border-color: #cbd5e1;
+  background: #f4f6f8;
+  color: #64748b;
+  opacity: 0.72;
+}
+
 .scoreless-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
