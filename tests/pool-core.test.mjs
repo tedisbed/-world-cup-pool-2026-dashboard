@@ -6,6 +6,8 @@ import {
   createEmptyState,
   getMatchesByDate,
   getMatchesForDate,
+  getKnockoutBracket,
+  getNationPointStandings,
   getOwnerOpportunityRows,
   getPlayerGoalTotals,
   getRecentPointEvents,
@@ -82,4 +84,52 @@ test("rules reference groups related scoring paths", () => {
   const groupStage = groups.find((group) => group.title === "Group Stage");
   assert.ok(groupStage.rules.some((rule) => rule.label === "Advance to knockout"));
   assert.ok(groupStage.rules.some((rule) => rule.points < 0 && rule.label === "Scoreless group stage"));
+});
+
+test("knockout bracket starts with source placeholders", () => {
+  const bracket = getKnockoutBracket(createEmptyState());
+  const roundOf32 = bracket.rounds.find((round) => round.stage === "r32");
+  const match86 = roundOf32.matches.find((match) => match.id === "m86");
+
+  assert.deepEqual(
+    match86.slots.map((slot) => ({ label: slot.label, team: slot.team })),
+    [
+      { label: "Group J winner", team: "" },
+      { label: "Group H runner-up", team: "" },
+    ],
+  );
+});
+
+test("knockout bracket fills group source slots from current standings leaders", () => {
+  const state = createEmptyState();
+  state.matches["g-j-01"] = { homeScore: 2, awayScore: 0, status: "final" };
+
+  const bracket = getKnockoutBracket(state);
+  const match86 = bracket.rounds
+    .find((round) => round.stage === "r32")
+    .matches.find((match) => match.id === "m86");
+
+  assert.equal(match86.slots[0].label, "Group J winner");
+  assert.equal(match86.slots[0].team, "Argentina");
+});
+
+test("nation point standings split last-standing races by group and federation", () => {
+  const standings = getNationPointStandings(createEmptyState());
+
+  assert.equal(standings.groupRows.length, 12);
+  assert.equal(standings.federationRows.length, 6);
+
+  const groupA = standings.groupRows.find((row) => row.key === "A");
+  assert.equal(groupA.title, "Group A");
+  assert.equal(groupA.points, 7);
+  assert.equal(groupA.status, "4 alive");
+  assert.deepEqual(
+    groupA.contenders.map((row) => row.team),
+    ["Czechia", "Mexico", "South Africa", "South Korea"],
+  );
+
+  const concacaf = standings.federationRows.find((row) => row.key === "CONCACAF");
+  assert.equal(concacaf.title, "CONCACAF");
+  assert.equal(concacaf.points, 5);
+  assert.ok(concacaf.contenders.some((row) => row.team === "Mexico"));
 });

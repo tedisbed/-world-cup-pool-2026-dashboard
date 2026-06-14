@@ -6,9 +6,11 @@ import {
   fixtures,
   getAllMatches,
   getGroupStandings,
+  getKnockoutBracket,
   getMatchImpact,
   getMatchWinner,
   getMatchesForDate,
+  getNationPointStandings,
   getOwnerForTeam,
   getOwnerOpportunityRows,
   getPlayerGoalTotals,
@@ -63,6 +65,9 @@ const dom = {
   matchList: document.getElementById("match-list"),
   impactPanel: document.getElementById("impact-panel"),
   groupsPanel: document.getElementById("groups-panel"),
+  bracketPanel: document.getElementById("bracket-panel"),
+  nationPointsPanel: document.getElementById("nation-points-panel"),
+  goalsPanel: document.getElementById("goals-panel"),
   draftPanel: document.getElementById("draft-panel"),
   rulesPanel: document.getElementById("rules-panel"),
   search: document.getElementById("search"),
@@ -82,7 +87,7 @@ function normalizeStaticMarkup() {
   const legacyDataTab = document.querySelector('[data-tab="data"]');
   if (legacyDataTab) {
     legacyDataTab.dataset.tab = "rules";
-    legacyDataTab.textContent = "Rules Reference";
+    legacyDataTab.textContent = "Rules";
   }
 
   const legacyDataPanel = document.getElementById("tab-data");
@@ -159,6 +164,9 @@ function render() {
   renderSpotlight();
   renderMatches();
   renderGroups(result);
+  renderBracket();
+  renderNationPoints();
+  renderPlayerGoals();
   renderDraft();
   renderRules();
 }
@@ -404,9 +412,59 @@ function renderGroups(result) {
   `;
 }
 
-function renderDraft() {
-  const draftPanel = document.getElementById("draft-panel");
-  if (!draftPanel) return;
+function renderBracket() {
+  const bracketPanel = document.getElementById("bracket-panel");
+  if (!bracketPanel) return;
+  const bracket = getKnockoutBracket(state);
+
+  bracketPanel.innerHTML = `
+    <section class="card">
+      <div class="section-title">
+        <span>Knockout Bracket</span>
+        <small>Current leaders fill in as group results are entered</small>
+      </div>
+      <div class="bracket-scroll">
+        <div class="bracket-grid">
+          ${bracket.rounds.map(bracketRound).join("")}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderNationPoints() {
+  const nationPointsPanel = document.getElementById("nation-points-panel");
+  if (!nationPointsPanel) return;
+  const standings = getNationPointStandings(state);
+
+  nationPointsPanel.innerHTML = `
+    <div class="nation-points-layout">
+      <section class="card">
+        <div class="section-title">
+          <span>Last From Group</span>
+          <small>+${rules.nationPoints.lastFromGroup} when one country is last standing</small>
+        </div>
+        <div class="nation-race-grid">
+          ${standings.groupRows.map(nationRaceCard).join("")}
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-title">
+          <span>Last From Federation</span>
+          <small>+${rules.nationPoints.lastFromFederation} by confederation</small>
+        </div>
+        <div class="nation-race-grid federation-grid">
+          ${standings.federationRows.map(nationRaceCard).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function renderPlayerGoals() {
+  const goalsPanel = document.getElementById("goals-panel");
+  if (!goalsPanel) return;
   const playerGoalTotals = getPlayerGoalTotals(state);
   const maxGoals = Math.max(0, ...selectedPlayers.map((player) => Number(playerGoalTotals[player.name] || 0)));
   const topScorers = selectedPlayers.filter((player) => maxGoals > 0 && Number(playerGoalTotals[player.name] || 0) === maxGoals);
@@ -416,50 +474,55 @@ function renderDraft() {
       a.name.localeCompare(b.name),
   );
 
-  draftPanel.innerHTML = `
-    <div class="draft-grid">
-      <section class="card">
-        <div class="section-title">
-          <span>Selected Player Goals</span>
-          <small>${topScorers.length ? `+${rules.individualAwards.selectedPlayerMostGoals}: ${topScorers.map((player) => player.name).join(", ")}` : "No goals yet"}</small>
-        </div>
-        ${playerRows.map((player) => playerGoalRow(player, playerGoalTotals)).join("")}
-      </section>
+  goalsPanel.innerHTML = `
+    <section class="card">
+      <div class="section-title">
+        <span>Selected Player Goals</span>
+        <small>${topScorers.length ? `+${rules.individualAwards.selectedPlayerMostGoals}: ${topScorers.map((player) => player.name).join(", ")}` : "No goals yet"}</small>
+      </div>
+      ${playerRows.map((player) => playerGoalRow(player, playerGoalTotals)).join("")}
+    </section>
+  `;
+}
 
-      <section class="card">
-        <div class="section-title">
-          <span>Draft Board</span>
-          <small>Gold cells are selected players</small>
-        </div>
-        <div class="draft-table-wrap">
-          <table class="draft-table">
-            <thead>
-              <tr>
-                <th>Round</th>
-                ${owners.map((owner) => `<th>${escapeHtml(owner)}</th>`).join("")}
-              </tr>
-            </thead>
-            <tbody>
-              ${[1, 2, 3, 4, 5, 6, 7]
-                .map(
-                  (round) => `
-                    <tr>
-                      <td><strong>Round ${round}</strong></td>
-                      ${owners
-                        .map((owner) => {
-                          const pick = draftPicks.find((entry) => entry.owner === owner && entry.round === round);
-                          return `<td>${draftPickCell(pick)}</td>`;
-                        })
-                        .join("")}
-                    </tr>
-                  `,
-                )
-                .join("")}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
+function renderDraft() {
+  const draftPanel = document.getElementById("draft-panel");
+  if (!draftPanel) return;
+
+  draftPanel.innerHTML = `
+    <section class="card">
+      <div class="section-title">
+        <span>Draft Board</span>
+        <small>Gold cells are selected players</small>
+      </div>
+      <div class="draft-table-wrap">
+        <table class="draft-table">
+          <thead>
+            <tr>
+              <th>Round</th>
+              ${owners.map((owner) => `<th>${escapeHtml(owner)}</th>`).join("")}
+            </tr>
+          </thead>
+          <tbody>
+            ${[1, 2, 3, 4, 5, 6, 7]
+              .map(
+                (round) => `
+                  <tr>
+                    <td><strong>Round ${round}</strong></td>
+                    ${owners
+                      .map((owner) => {
+                        const pick = draftPicks.find((entry) => entry.owner === owner && entry.round === round);
+                        return `<td>${draftPickCell(pick)}</td>`;
+                      })
+                      .join("")}
+                  </tr>
+                `,
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    </section>
   `;
 }
 
@@ -468,7 +531,7 @@ function renderRules() {
   if (!rulesPanel) return;
   rulesPanel.innerHTML = `
     <section class="data-box rules-reference">
-      <h3>Rules Reference</h3>
+      <h3>Rules</h3>
       <div class="rules-group-grid">${getRuleGroups().map(ruleGroup).join("")}</div>
       <p class="muted">
         Fixture names are normalized to the pool sheet. Schedule source:
@@ -715,6 +778,72 @@ function standingsTable(rows, qualified) {
           .join("")}
       </tbody>
     </table>
+  `;
+}
+
+function bracketRound(round) {
+  return `
+    <section class="bracket-round">
+      <div class="bracket-round-title">${escapeHtml(round.title)}</div>
+      <div class="bracket-match-list">
+        ${round.matches.map(bracketMatch).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function bracketMatch(match) {
+  return `
+    <article class="bracket-match">
+      <div class="bracket-match-title">${escapeHtml(match.title)}</div>
+      ${match.slots.map(bracketSlot).join("")}
+    </article>
+  `;
+}
+
+function bracketSlot(slot) {
+  const hasTeam = Boolean(slot.team);
+  return `
+    <div class="bracket-slot ${hasTeam ? "filled" : ""}">
+      <strong>${escapeHtml(slot.team || slot.label)}</strong>
+      <span>${hasTeam ? escapeHtml(slot.label) : "Pending"}</span>
+      ${slot.owner ? `<span class="owner-chip" style="--owner-color:${ownerColor(slot.owner)}">${escapeHtml(slot.owner)}</span>` : ""}
+    </div>
+  `;
+}
+
+function nationRaceCard(row) {
+  const contenders = row.contenders.slice(0, 4);
+  return `
+    <article class="nation-race-card">
+      <div class="nation-race-head">
+        <div>
+          <strong>${escapeHtml(row.title)}</strong>
+          <span>${escapeHtml(row.status)}</span>
+        </div>
+        <span class="point-chip">+${row.points}</span>
+      </div>
+      ${
+        row.winner
+          ? `<div class="nation-race-winner"><strong>${escapeHtml(row.winner)}</strong><span class="owner-chip" style="--owner-color:${ownerColor(row.owner)}">${escapeHtml(row.owner)}</span></div>`
+          : ""
+      }
+      <div class="nation-contender-list">
+        ${contenders.map(nationContenderRow).join("")}
+      </div>
+    </article>
+  `;
+}
+
+function nationContenderRow(row) {
+  return `
+    <div class="nation-contender-row ${row.alive ? "" : "eliminated"}">
+      <div>
+        <strong>${escapeHtml(row.team)}</strong>
+        <span>${escapeHtml(row.label)} · ${escapeHtml(row.group)} · ${escapeHtml(row.federation)}</span>
+      </div>
+      <span class="owner-chip" style="--owner-color:${ownerColor(row.owner)}">${escapeHtml(row.owner)}</span>
+    </div>
   `;
 }
 

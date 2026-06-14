@@ -317,6 +317,68 @@ export const fixtures = [
   { id: "g-k-06", stage: "group", date: "2026-06-27", group: "K", venue: "Atlanta", home: "DR Congo", away: "Uzbekistan" },
 ];
 
+export const knockoutBracketTemplate = [
+  {
+    stage: "r32",
+    title: "Round of 32",
+    matches: [
+      { id: "m73", slots: [{ type: "group", group: "A", rank: 2 }, { type: "group", group: "B", rank: 2 }] },
+      { id: "m74", slots: [{ type: "group", group: "E", rank: 1 }, { type: "third", groups: ["A", "B", "C", "D", "F"] }] },
+      { id: "m75", slots: [{ type: "group", group: "F", rank: 1 }, { type: "group", group: "C", rank: 2 }] },
+      { id: "m76", slots: [{ type: "group", group: "C", rank: 1 }, { type: "group", group: "F", rank: 2 }] },
+      { id: "m77", slots: [{ type: "group", group: "I", rank: 1 }, { type: "third", groups: ["C", "D", "F", "G", "H"] }] },
+      { id: "m78", slots: [{ type: "group", group: "E", rank: 2 }, { type: "group", group: "I", rank: 2 }] },
+      { id: "m79", slots: [{ type: "group", group: "A", rank: 1 }, { type: "third", groups: ["C", "E", "F", "H", "I"] }] },
+      { id: "m80", slots: [{ type: "group", group: "L", rank: 1 }, { type: "third", groups: ["E", "H", "I", "J", "K"] }] },
+      { id: "m81", slots: [{ type: "group", group: "D", rank: 1 }, { type: "third", groups: ["B", "E", "F", "I", "J"] }] },
+      { id: "m82", slots: [{ type: "group", group: "G", rank: 1 }, { type: "third", groups: ["A", "E", "H", "I", "J"] }] },
+      { id: "m83", slots: [{ type: "group", group: "K", rank: 2 }, { type: "group", group: "L", rank: 2 }] },
+      { id: "m84", slots: [{ type: "group", group: "H", rank: 1 }, { type: "group", group: "J", rank: 2 }] },
+      { id: "m85", slots: [{ type: "group", group: "B", rank: 1 }, { type: "third", groups: ["E", "F", "G", "I", "J"] }] },
+      { id: "m86", slots: [{ type: "group", group: "J", rank: 1 }, { type: "group", group: "H", rank: 2 }] },
+      { id: "m87", slots: [{ type: "group", group: "K", rank: 1 }, { type: "third", groups: ["D", "E", "I", "J", "L"] }] },
+      { id: "m88", slots: [{ type: "group", group: "D", rank: 2 }, { type: "group", group: "G", rank: 2 }] },
+    ],
+  },
+  {
+    stage: "r16",
+    title: "Round of 16",
+    matches: [
+      { id: "m89", slots: [{ type: "winner", matchId: "m73" }, { type: "winner", matchId: "m75" }] },
+      { id: "m90", slots: [{ type: "winner", matchId: "m74" }, { type: "winner", matchId: "m77" }] },
+      { id: "m91", slots: [{ type: "winner", matchId: "m76" }, { type: "winner", matchId: "m78" }] },
+      { id: "m92", slots: [{ type: "winner", matchId: "m79" }, { type: "winner", matchId: "m80" }] },
+      { id: "m93", slots: [{ type: "winner", matchId: "m83" }, { type: "winner", matchId: "m84" }] },
+      { id: "m94", slots: [{ type: "winner", matchId: "m81" }, { type: "winner", matchId: "m82" }] },
+      { id: "m95", slots: [{ type: "winner", matchId: "m86" }, { type: "winner", matchId: "m88" }] },
+      { id: "m96", slots: [{ type: "winner", matchId: "m85" }, { type: "winner", matchId: "m87" }] },
+    ],
+  },
+  {
+    stage: "qf",
+    title: "Quarterfinals",
+    matches: [
+      { id: "m97", slots: [{ type: "winner", matchId: "m89" }, { type: "winner", matchId: "m90" }] },
+      { id: "m98", slots: [{ type: "winner", matchId: "m93" }, { type: "winner", matchId: "m94" }] },
+      { id: "m99", slots: [{ type: "winner", matchId: "m91" }, { type: "winner", matchId: "m92" }] },
+      { id: "m100", slots: [{ type: "winner", matchId: "m95" }, { type: "winner", matchId: "m96" }] },
+    ],
+  },
+  {
+    stage: "sf",
+    title: "Semifinals",
+    matches: [
+      { id: "m101", slots: [{ type: "winner", matchId: "m97" }, { type: "winner", matchId: "m98" }] },
+      { id: "m102", slots: [{ type: "winner", matchId: "m99" }, { type: "winner", matchId: "m100" }] },
+    ],
+  },
+  {
+    stage: "final",
+    title: "Final",
+    matches: [{ id: "m104", slots: [{ type: "winner", matchId: "m101" }, { type: "winner", matchId: "m102" }] }],
+  },
+];
+
 const groups = [...new Set(teams.map((team) => team.group))].sort();
 const teamByName = new Map(teams.map((team) => [team.name, team]));
 const teamOwnerByName = new Map(
@@ -449,6 +511,24 @@ export function getMatchesByDate(state = createEmptyState()) {
 
 export function getMatchesForDate(state = createEmptyState(), date = "") {
   return getAllMatches(state).filter((match) => match.date === date);
+}
+
+export function getKnockoutBracket(state = createEmptyState()) {
+  const normalized = normalizeState(state);
+  const standings = getGroupStandings(normalized);
+  const matchWinners = getBracketMatchWinners(normalized);
+
+  return {
+    rounds: knockoutBracketTemplate.map((round) => ({
+      ...round,
+      matches: round.matches.map((match) => ({
+        id: match.id,
+        stage: round.stage,
+        title: `Match ${match.id.slice(1)}`,
+        slots: match.slots.map((slot) => resolveBracketSlot(slot, standings, matchWinners)),
+      })),
+    })),
+  };
 }
 
 export function isCompletedMatch(match) {
@@ -915,6 +995,32 @@ export function getTeamProgress(state = createEmptyState()) {
   return progress;
 }
 
+export function getNationPointStandings(state = createEmptyState()) {
+  const progress = getTeamProgress(state);
+  const federations = [...new Set(teams.map((team) => team.federation))].sort();
+
+  return {
+    groupRows: groups.map((group) =>
+      nationPointRace({
+        key: group,
+        title: `Group ${group}`,
+        points: rules.nationPoints.lastFromGroup,
+        teamNames: getTeamsByGroup(group),
+        progress,
+      }),
+    ),
+    federationRows: federations.map((federation) =>
+      nationPointRace({
+        key: federation,
+        title: federation,
+        points: rules.nationPoints.lastFromFederation,
+        teamNames: teams.filter((team) => team.federation === federation).map((team) => team.name),
+        progress,
+      }),
+    ),
+  };
+}
+
 function scoreNationBonuses(state, add) {
   if (!areAllGroupsComplete(state)) return;
 
@@ -954,6 +1060,35 @@ function awardLastStanding(teamNames, progress, points, reasonForTeam, add, cate
   if (liveRows.length === 1 && liveRows[0].team !== candidates[0].team) return;
 
   add(getOwnerForTeam(candidates[0].team), points, reasonForTeam(candidates[0].team), candidates[0].team, category);
+}
+
+function nationPointRace({ key, title, points, teamNames, progress }) {
+  const rows = teamNames
+    .map((team) => progress[team])
+    .filter(Boolean)
+    .sort((a, b) => b.rank - a.rank || Number(b.alive) - Number(a.alive) || a.team.localeCompare(b.team));
+  const liveRows = rows.filter((row) => row.alive);
+  const topRank = Math.max(0, ...rows.map((row) => row.rank));
+  const leaders = rows.filter((row) => row.rank === topRank);
+  const winner = liveRows.length === 1 && leaders.length === 1 && liveRows[0].team === leaders[0].team ? leaders[0] : null;
+
+  return {
+    key,
+    title,
+    points,
+    status: winner ? `Leader: ${winner.team}` : `${liveRows.length} alive`,
+    winner: winner?.team ?? "",
+    owner: winner ? getOwnerForTeam(winner.team) : "",
+    contenders: rows.map((row) => ({
+      team: row.team,
+      owner: getOwnerForTeam(row.team),
+      group: row.group,
+      federation: row.federation,
+      alive: row.alive,
+      rank: row.rank,
+      label: row.label,
+    })),
+  };
 }
 
 export function getMatchImpact(match, state = createEmptyState()) {
@@ -997,6 +1132,60 @@ function compareGroupRecords(a, b) {
     a.ga - b.ga ||
     a.team.localeCompare(b.team)
   );
+}
+
+function getBracketMatchWinners(state) {
+  const winners = {};
+  for (const match of getAllMatches(state)) {
+    if (match.stage === "group") continue;
+    const key = bracketMatchKey(match);
+    const winner = getMatchWinner(match);
+    if (key && winner) winners[key] = winner;
+  }
+  return winners;
+}
+
+function bracketMatchKey(match) {
+  const id = String(match.id ?? "").toLowerCase();
+  const number = id.match(/(?:^|[^0-9])([7-9][0-9]|10[0-4])(?:[^0-9]|$)/)?.[1];
+  return number ? `m${number}` : "";
+}
+
+function resolveBracketSlot(slot, standings, matchWinners) {
+  if (slot.type === "group") {
+    const label = `Group ${slot.group} ${slot.rank === 1 ? "winner" : "runner-up"}`;
+    const record = standings[slot.group]?.[slot.rank - 1];
+    return {
+      label,
+      team: record?.played > 0 ? record.team : "",
+      owner: record?.played > 0 ? getOwnerForTeam(record.team) : "",
+    };
+  }
+
+  if (slot.type === "third") {
+    const label = `Best 3rd ${slot.groups.join("/")}`;
+    const record = slot.groups
+      .map((group) => standings[group]?.[2])
+      .filter((entry) => entry?.played > 0)
+      .sort(compareGroupRecords)[0];
+    return {
+      label,
+      team: record?.team ?? "",
+      owner: record?.team ? getOwnerForTeam(record.team) : "",
+    };
+  }
+
+  if (slot.type === "winner") {
+    const label = `Winner Match ${slot.matchId.slice(1)}`;
+    const team = matchWinners[slot.matchId] ?? "";
+    return {
+      label,
+      team,
+      owner: team ? getOwnerForTeam(team) : "",
+    };
+  }
+
+  return { label: "", team: "", owner: "" };
 }
 
 function numberOrZero(value) {
