@@ -13,6 +13,8 @@ import {
   getRecentPointEvents,
   getRuleGroups,
   getScorelessGroupTracker,
+  getProjectedThirdPlaceTable,
+  getThirdPlaceTable,
 } from "../pool-core.mjs";
 
 test("match-level selected-player goals roll into totals and scoring", () => {
@@ -112,6 +114,19 @@ test("knockout bracket fills group source slots from current standings leaders",
 
   assert.equal(match86.slots[0].label, "Group J winner");
   assert.equal(match86.slots[0].team, "Argentina");
+});
+
+test("projected third-place table includes every group before groups are complete", () => {
+  const state = createEmptyState();
+
+  assert.equal(getThirdPlaceTable(state).length, 0);
+  assert.equal(getProjectedThirdPlaceTable(state).length, 12);
+  assert.deepEqual(
+    getProjectedThirdPlaceTable(state)
+      .slice(0, 8)
+      .map((row) => row.team),
+    ["Austria", "Germany", "Ghana", "Iran", "Morocco", "Norway", "Portugal", "Qatar"],
+  );
 });
 
 test("nation point standings split last-standing races by group and federation", () => {

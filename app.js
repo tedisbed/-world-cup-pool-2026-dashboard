@@ -14,6 +14,7 @@ import {
   getOwnerForTeam,
   getOwnerOpportunityRows,
   getPlayerGoalTotals,
+  getProjectedThirdPlaceTable,
   getQualifiedTeams,
   getRuleGroups,
   getScorelessGroupTracker,
@@ -404,24 +405,26 @@ function renderGroups(result) {
   if (!groupsPanel) return;
   const standings = getGroupStandings(state);
   const qualified = getQualifiedTeams(state);
-  const thirdTable = getThirdPlaceTable(state);
+  const allGroupsComplete = areAllGroupsComplete(state);
+  const thirdTable = allGroupsComplete ? getThirdPlaceTable(state) : getProjectedThirdPlaceTable(state);
+  const projectedThirdPlaceTeams = new Set(thirdTable.slice(0, 8).map((row) => row.team));
 
   groupsPanel.innerHTML = `
     <div class="group-grid">
       ${Object.entries(standings)
-        .map(([group, rows]) => groupTable(group, rows, qualified))
+        .map(([group, rows]) => groupTable(group, rows, qualified, projectedThirdPlaceTeams, allGroupsComplete))
         .join("")}
     </div>
     <section class="card" style="margin-top:12px">
       <div class="section-title">
         <span>Third-Place Table</span>
-        <small>Top 8 third-place teams advance; 9-12 are out</small>
+        <small>${allGroupsComplete ? "Top 8 third-place teams advance; 9-12 are out" : "Projected from current standings; top 8 advance"}</small>
       </div>
       ${
         thirdTable.length
           ? standingsTable(thirdTable.map((row, index) => ({ ...row, rank: index + 1 })), qualified, "standings-table", {
               showThirdPlaceStatus: true,
-              allGroupsComplete: areAllGroupsComplete(state),
+              allGroupsComplete,
             })
           : `<div class="empty-state">No completed groups yet.</div>`
       }
@@ -440,6 +443,7 @@ function renderBracket() {
         <span>Knockout Bracket</span>
         <small>Current leaders fill in as group results are entered</small>
       </div>
+      ${bracketPathView(bracket)}
       <div class="bracket-scroll">
         <div class="bracket-grid">
           ${bracket.rounds.map(bracketRound).join("")}
@@ -447,6 +451,89 @@ function renderBracket() {
       </div>
     </section>
   `;
+}
+
+function bracketPathView(bracket) {
+  const rounds = Object.fromEntries(bracket.rounds.map((round) => [round.stage, round.matches]));
+  const matchMap = new Map(bracket.rounds.flatMap((round) => round.matches.map((match) => [match.id, match])));
+  const qfMatches = rounds.qf ?? [];
+  const sfMatches = rounds.sf ?? [];
+  const finalMatch = rounds.final?.[0];
+
+  return `
+    <div class="bracket-path">
+      <div class="bracket-path-head">
+        <strong>Path to the Final</strong>
+        <span>Round of 32 winners feed the Round of 16, then into quarters, semis, and final.</span>
+      </div>
+      <div class="bracket-path-grid">
+        ${qfMatches.map((match) => bracketQuarterPath(match, matchMap)).join("")}
+      </div>
+      <div class="bracket-final-path">
+        ${sfMatches.map((match) => bracketNextStep(match, "Semifinal", matchMap)).join("")}
+        ${finalMatch ? bracketNextStep(finalMatch, "Final", matchMap) : ""}
+      </div>
+    </div>
+  `;
+}
+
+function bracketQuarterPath(match, matchMap) {
+  const feederIds = sourceMatchIds(match);
+  return `
+    <article class="bracket-path-lane">
+      <div class="bracket-path-target">
+        <span>Quarterfinal</span>
+        <strong>${escapeHtml(match.title)}</strong>
+      </div>
+      <div class="bracket-path-sources">
+        ${feederIds.map((id) => bracketRoundOf16Path(matchMap.get(id), matchMap)).join("")}
+      </div>
+    </article>
+  `;
+}
+
+function bracketRoundOf16Path(match, matchMap) {
+  if (!match) return "";
+  const feederIds = sourceMatchIds(match);
+  return `
+    <div class="bracket-path-node">
+      <div class="bracket-path-match">
+        <span>Round of 16</span>
+        <strong>${escapeHtml(match.title)}</strong>
+      </div>
+      <div class="bracket-path-mini-list">
+        ${feederIds.map((id) => bracketMiniMatch(matchMap.get(id))).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function bracketMiniMatch(match) {
+  if (!match) return "";
+  return `
+    <div class="bracket-path-mini">
+      <span>${escapeHtml(match.title)}</span>
+      <strong>${match.slots.map((slot) => escapeHtml(slot.team || slot.label)).join(" / ")}</strong>
+    </div>
+  `;
+}
+
+function bracketNextStep(match, label, matchMap) {
+  const feederIds = sourceMatchIds(match);
+  return `
+    <article class="bracket-next-step">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(match.title)}</strong>
+      <em>${feederIds.map((id) => escapeHtml(matchMap.get(id)?.title ?? `Match ${id.slice(1)}`)).join(" vs ")}</em>
+    </article>
+  `;
+}
+
+function sourceMatchIds(match) {
+  return match.slots
+    .map((slot) => String(slot.label).match(/^Winner Match (\d+)$/)?.[1])
+    .filter(Boolean)
+    .map((number) => `m${number}`);
 }
 
 function renderNationPoints() {
@@ -832,12 +919,11 @@ function playerGoalRow(player, playerGoalTotals) {
   `;
 }
 
-function groupTable(group, rows, qualified) {
+function groupTable(group, rows, qualified, projectedThirdPlaceTeams, allGroupsComplete) {
   const complete = fixtures.filter((fixture) => fixture.group === group).every((fixture) => {
     const match = { ...fixture, ...(state.matches[fixture.id] ?? {}) };
     return isCompletedMatch(match);
   });
-  const allGroupsComplete = areAllGroupsComplete(state);
 
   return `
     <section class="card">
@@ -845,7 +931,7 @@ function groupTable(group, rows, qualified) {
         <span>Group ${group}</span>
         <small>${complete ? "Complete" : "Open"}</small>
       </div>
-      ${standingsTable(rows, qualified, "standings-table", { showAdvancement: true, allGroupsComplete })}
+      ${standingsTable(rows, qualified, "standings-table", { showAdvancement: true, allGroupsComplete, projectedThirdPlaceTeams })}
     </section>
   `;
 }
@@ -865,7 +951,7 @@ function standingsTable(rows, qualified, className = "", options = {}) {
               const advancement = options.showThirdPlaceStatus
                 ? thirdPlaceStatus(row, options.allGroupsComplete)
                 : options.showAdvancement
-                  ? advancementStatus(row, qualified, options.allGroupsComplete)
+                  ? advancementStatus(row, qualified, options.allGroupsComplete, options.projectedThirdPlaceTeams)
                   : null;
               return `
               <tr class="${advancement ? `advancement-${advancement.tone}` : qualified.has(row.team) ? "qualified-row" : ""}">
@@ -889,27 +975,31 @@ function standingsTable(rows, qualified, className = "", options = {}) {
   `;
 }
 
-function advancementStatus(row, qualified, allGroupsComplete) {
-  return getAdvancementStatus(row, qualified, allGroupsComplete);
+function advancementStatus(row, qualified, allGroupsComplete, projectedThirdPlaceTeams) {
+  return getAdvancementStatus(row, qualified, allGroupsComplete, projectedThirdPlaceTeams);
 }
 
-export function getAdvancementStatus(row, qualified, allGroupsComplete) {
+export function getAdvancementStatus(row, qualified, allGroupsComplete, projectedThirdPlaceTeams = new Set()) {
   if (qualified.has(row.team)) {
     return row.rank === 3
       ? { label: "ADV 3RD", tone: "advancing" }
       : { label: "ADVANCING", tone: "advancing" };
   }
   if (!allGroupsComplete && row.rank <= 2) return { label: "ADVANCING", tone: "advancing" };
-  if (!allGroupsComplete && row.rank === 3) return { label: "3RD WATCH", tone: "bubble" };
+  if (!allGroupsComplete && row.rank === 3) {
+    return projectedThirdPlaceTeams.has(row.team)
+      ? { label: "PROJ ADV 3RD", tone: "advancing" }
+      : { label: "PROJ OUT 3RD", tone: "out" };
+  }
   if (row.rank === 3) return { label: "OUT 3RD", tone: "out" };
   return { label: "OUT", tone: "out" };
 }
 
 function thirdPlaceStatus(row, allGroupsComplete) {
   if (row.rank <= 8) {
-    return { label: allGroupsComplete ? "ADVANCES" : "TOP 8 NOW", tone: "advancing" };
+    return { label: allGroupsComplete ? "ADVANCES" : "PROJ ADV 3RD", tone: "advancing" };
   }
-  return { label: "OUT 3RD", tone: "out" };
+  return { label: allGroupsComplete ? "OUT 3RD" : "PROJ OUT 3RD", tone: "out" };
 }
 
 function bracketRound(round) {

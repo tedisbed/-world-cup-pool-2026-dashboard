@@ -797,6 +797,158 @@ button:disabled {
   padding-bottom: 4px;
 }
 
+.bracket-path {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.bracket-path-head {
+  display: grid;
+  gap: 2px;
+}
+
+.bracket-path-head strong {
+  font-size: 15px;
+}
+
+.bracket-path-head span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.bracket-path-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.bracket-path-lane {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+  padding: 10px;
+}
+
+.bracket-path-target,
+.bracket-path-match,
+.bracket-next-step {
+  display: grid;
+  gap: 2px;
+  border: 1px solid #b8c7d9;
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px;
+}
+
+.bracket-path-target {
+  position: relative;
+  border-color: #a7d9b5;
+  background: #f2fbf6;
+}
+
+.bracket-path-target::before {
+  content: "";
+  position: absolute;
+  bottom: -9px;
+  left: 50%;
+  width: 2px;
+  height: 8px;
+  background: var(--line);
+}
+
+.bracket-path-sources {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.bracket-path-node {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding-top: 8px;
+}
+
+.bracket-path-node::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 50%;
+  height: 2px;
+  background: var(--line);
+}
+
+.bracket-path-node:first-child::before {
+  left: 50%;
+}
+
+.bracket-path-node:last-child::before {
+  left: 0;
+}
+
+.bracket-path-match {
+  border-color: #d6deea;
+}
+
+.bracket-path-mini-list {
+  display: grid;
+  gap: 5px;
+}
+
+.bracket-path-mini {
+  display: grid;
+  gap: 2px;
+  min-height: 48px;
+  border: 1px dashed #cfd8e6;
+  border-radius: 8px;
+  background: #fff;
+  padding: 7px;
+}
+
+.bracket-path-target span,
+.bracket-path-match span,
+.bracket-next-step span,
+.bracket-path-mini span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.bracket-path-target strong,
+.bracket-path-match strong,
+.bracket-next-step strong,
+.bracket-path-mini strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bracket-path-mini strong {
+  font-size: 12px;
+}
+
+.bracket-final-path {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px;
+}
+
+.bracket-next-step {
+  background: #fffdf6;
+}
+
+.bracket-next-step em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
 .bracket-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(220px, 1fr));

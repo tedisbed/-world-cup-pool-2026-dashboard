@@ -654,6 +654,14 @@ export function getThirdPlaceTable(state = createEmptyState()) {
     .sort(compareGroupRecords);
 }
 
+export function getProjectedThirdPlaceTable(state = createEmptyState()) {
+  const standings = getGroupStandings(state);
+  return groups
+    .map((group) => standings[group][2])
+    .filter(Boolean)
+    .sort(compareGroupRecords);
+}
+
 export function calculateScores(inputState = createEmptyState()) {
   const state = normalizeState(inputState);
   const scoreRows = new Map(owners.map((owner) => [owner, { owner, score: 0, details: [] }]));
