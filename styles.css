@@ -480,11 +480,21 @@ h1 {
 
 .event-feed li {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: 50px minmax(0, 1fr);
+  gap: 8px;
   align-items: start;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--line);
+}
+
+.event-feed .point-chip {
+  align-self: start;
+  justify-self: center;
+  width: 44px;
+  min-width: 44px;
+  height: 28px;
+  margin-top: 1px;
+  font-size: 13px;
 }
 
 .event-feed li:last-child {
@@ -493,12 +503,12 @@ h1 {
 }
 
 .event-feed strong,
-.event-feed span,
+.event-feed li > div > span,
 .event-feed em {
   display: block;
 }
 
-.event-feed span {
+.event-feed li > div > span {
   color: var(--ink);
   font-size: 13px;
   font-weight: 800;
@@ -621,6 +631,10 @@ h1 {
   border-color: rgba(0, 0, 0, 0.08);
   background: color-mix(in srgb, var(--owner-color, var(--teal)) 12%, #fff);
   color: var(--ink);
+  max-width: 100%;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .team-line {
@@ -958,6 +972,20 @@ table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+}
+
+.standings-table {
+  table-layout: fixed;
+}
+
+.standings-table th:first-child,
+.standings-table td:first-child {
+  width: 34%;
+}
+
+.standings-table th:last-child,
+.standings-table td:last-child {
+  width: 36%;
 }
 
 th,

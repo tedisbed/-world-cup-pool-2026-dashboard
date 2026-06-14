@@ -398,7 +398,7 @@ function renderGroups(result) {
       </div>
       ${
         thirdTable.length
-          ? standingsTable(thirdTable.map((row, index) => ({ ...row, rank: index + 1 })), qualified)
+          ? standingsTable(thirdTable.map((row, index) => ({ ...row, rank: index + 1 })), qualified, "standings-table")
           : `<div class="empty-state">No completed groups yet.</div>`
       }
     </section>
@@ -749,14 +749,14 @@ function groupTable(group, rows, qualified) {
         <span>Group ${group}</span>
         <small>${complete ? "Complete" : "Open"}</small>
       </div>
-      ${standingsTable(rows, qualified)}
+      ${standingsTable(rows, qualified, "standings-table")}
     </section>
   `;
 }
 
-function standingsTable(rows, qualified) {
+function standingsTable(rows, qualified, className = "") {
   return `
-    <table>
+    <table class="${escapeHtml(className)}">
       <thead>
         <tr>
           <th>Team</th><th>Pts</th><th>GD</th><th>GF</th><th>Owner</th>
