@@ -113,7 +113,7 @@ export function getRuleGroups() {
       ],
     },
     {
-      title: "Nation Points",
+      title: "Survivor Points",
       note: "Late-tournament bonuses tied to country and federation performance.",
       rules: [
         { points: rules.nationPoints.lastFromGroup, label: "Last from group" },
@@ -968,8 +968,10 @@ export function getTeamProgress(state = createEmptyState()) {
   }
 
   const stageRank = { r32: 1, r16: 2, qf: 3, sf: 4, final: 5 };
-  for (const match of getAllMatches(state)) {
-    if (match.stage === "group" || !isCompletedMatch(match)) continue;
+  const knockoutMatches = getAllMatches(state)
+    .filter((match) => match.stage !== "group" && isCompletedMatch(match))
+    .sort((a, b) => (stageRank[a.stage] ?? 1) - (stageRank[b.stage] ?? 1) || String(a.id).localeCompare(String(b.id)));
+  for (const match of knockoutMatches) {
     const winner = getMatchWinner(match);
     const loser = getMatchLoser(match);
     const rank = stageRank[match.stage] ?? 1;
@@ -1021,6 +1023,71 @@ export function getNationPointStandings(state = createEmptyState()) {
   };
 }
 
+export function getScorelessGroupTracker(inputState = createEmptyState()) {
+  const state = normalizeState(inputState);
+  const teamRows = teams.map((team) => {
+    const matches = fixtures
+      .filter((fixture) => fixture.stage === "group" && (fixture.home === team.name || fixture.away === team.name))
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.id).localeCompare(String(b.id)))
+      .map((fixture, index) => {
+        const match = { ...fixture, ...(state.matches[fixture.id] ?? {}) };
+        const completed = isCompletedMatch(match);
+        const goals = completed ? goalsForTeamInMatch(match, team.name) : 0;
+        const opponent = match.home === team.name ? match.away : match.home;
+        return {
+          id: match.id,
+          slot: index + 1,
+          opponent,
+          completed,
+          goals,
+          state: completed ? (goals > 0 ? "scored" : "blank") : "pending",
+        };
+      });
+    const completed = matches.filter((match) => match.completed).length;
+    const goals = matches.reduce((total, match) => total + match.goals, 0);
+    const status = goals > 0 ? "cleared" : completed === matches.length ? "locked" : completed > 0 ? "danger" : "open";
+
+    return {
+      team: team.name,
+      owner: getOwnerForTeam(team.name),
+      group: team.group,
+      federation: team.federation,
+      completed,
+      goals,
+      remaining: Math.max(0, matches.length - completed),
+      status,
+      matches,
+    };
+  });
+
+  const statusRank = { locked: 0, danger: 1, open: 2, cleared: 3 };
+  const rows = teamRows.sort(
+    (a, b) =>
+      statusRank[a.status] - statusRank[b.status] ||
+      b.completed - a.completed ||
+      a.group.localeCompare(b.group) ||
+      a.team.localeCompare(b.team),
+  );
+
+  return {
+    summary: {
+      total: rows.length,
+      scoreless: rows.filter((row) => row.goals === 0).length,
+      scored: rows.filter((row) => row.goals > 0).length,
+      locked: rows.filter((row) => row.status === "locked").length,
+      danger: rows.filter((row) => row.status === "danger").length,
+      open: rows.filter((row) => row.status === "open").length,
+    },
+    teams: rows,
+  };
+}
+
+function goalsForTeamInMatch(match, team) {
+  if (match.home === team) return numberOrZero(match.homeScore);
+  if (match.away === team) return numberOrZero(match.awayScore);
+  return 0;
+}
+
 function scoreNationBonuses(state, add) {
   if (!areAllGroupsComplete(state)) return;
 
@@ -1032,7 +1099,7 @@ function scoreNationBonuses(state, add) {
       rules.nationPoints.lastFromGroup,
       (team) => `${team} last standing from Group ${group}`,
       add,
-      "Nation Points",
+      "Survivor Points",
     );
   }
 
@@ -1044,22 +1111,17 @@ function scoreNationBonuses(state, add) {
       rules.nationPoints.lastFromFederation,
       (team) => `${team} last standing from ${federation}`,
       add,
-      "Nation Points",
+      "Survivor Points",
     );
   }
 }
 
 function awardLastStanding(teamNames, progress, points, reasonForTeam, add, category) {
   const rows = teamNames.map((team) => progress[team]).filter(Boolean);
-  const liveRows = rows.filter((row) => row.alive);
-  if (liveRows.length > 1) return;
+  const winner = lastStandingWinner(rows);
+  if (!winner) return;
 
-  const topRank = Math.max(...rows.map((row) => row.rank));
-  const candidates = rows.filter((row) => row.rank === topRank);
-  if (candidates.length !== 1) return;
-  if (liveRows.length === 1 && liveRows[0].team !== candidates[0].team) return;
-
-  add(getOwnerForTeam(candidates[0].team), points, reasonForTeam(candidates[0].team), candidates[0].team, category);
+  add(getOwnerForTeam(winner.team), points, reasonForTeam(winner.team), winner.team, category);
 }
 
 function nationPointRace({ key, title, points, teamNames, progress }) {
@@ -1068,15 +1130,13 @@ function nationPointRace({ key, title, points, teamNames, progress }) {
     .filter(Boolean)
     .sort((a, b) => b.rank - a.rank || Number(b.alive) - Number(a.alive) || a.team.localeCompare(b.team));
   const liveRows = rows.filter((row) => row.alive);
-  const topRank = Math.max(0, ...rows.map((row) => row.rank));
-  const leaders = rows.filter((row) => row.rank === topRank);
-  const winner = liveRows.length === 1 && leaders.length === 1 && liveRows[0].team === leaders[0].team ? leaders[0] : null;
+  const winner = lastStandingWinner(rows);
 
   return {
     key,
     title,
     points,
-    status: winner ? `Leader: ${winner.team}` : `${liveRows.length} alive`,
+    status: winner ? `Last standing: ${winner.team}` : `${liveRows.length} alive`,
     winner: winner?.team ?? "",
     owner: winner ? getOwnerForTeam(winner.team) : "",
     contenders: rows.map((row) => ({
@@ -1089,6 +1149,17 @@ function nationPointRace({ key, title, points, teamNames, progress }) {
       label: row.label,
     })),
   };
+}
+
+function lastStandingWinner(rows) {
+  const liveRows = rows.filter((row) => row.alive);
+  if (liveRows.length > 1) return null;
+
+  const topRank = Math.max(0, ...rows.map((row) => row.rank));
+  const candidates = rows.filter((row) => row.rank === topRank);
+  if (candidates.length !== 1) return null;
+  if (liveRows.length === 1 && liveRows[0].team !== candidates[0].team) return null;
+  return candidates[0];
 }
 
 export function getMatchImpact(match, state = createEmptyState()) {

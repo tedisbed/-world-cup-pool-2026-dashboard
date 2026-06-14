@@ -16,6 +16,7 @@ import {
   getPlayerGoalTotals,
   getQualifiedTeams,
   getRuleGroups,
+  getScorelessGroupTracker,
   getSelectedPlayers,
   getTeam,
   getThirdPlaceTable,
@@ -66,10 +67,11 @@ const dom = {
   impactPanel: document.getElementById("impact-panel"),
   groupsPanel: document.getElementById("groups-panel"),
   bracketPanel: document.getElementById("bracket-panel"),
-  nationPointsPanel: document.getElementById("nation-points-panel"),
+  survivorPointsPanel: document.getElementById("survivor-points-panel"),
   goalsPanel: document.getElementById("goals-panel"),
   draftPanel: document.getElementById("draft-panel"),
   rulesPanel: document.getElementById("rules-panel"),
+  scorelessPanel: document.getElementById("scoreless-panel"),
   search: document.getElementById("search"),
   ownerFilter: document.getElementById("owner-filter"),
   groupFilter: document.getElementById("group-filter"),
@@ -170,6 +172,7 @@ function render() {
   renderPlayerGoals();
   renderDraft();
   renderRules();
+  renderScoreless();
 }
 
 function renderActiveTab() {
@@ -182,10 +185,11 @@ function renderActiveTab() {
   }
   if (activeTab === "groups") renderGroups(result);
   if (activeTab === "bracket") renderBracket();
-  if (activeTab === "nation-points") renderNationPoints();
+  if (activeTab === "survivor-points") renderNationPoints();
   if (activeTab === "goals") renderPlayerGoals();
   if (activeTab === "draft") renderDraft();
   if (activeTab === "rules") renderRules();
+  if (activeTab === "scoreless") renderScoreless();
 }
 
 function renderLeaderboard(result) {
@@ -443,15 +447,15 @@ function renderBracket() {
 }
 
 function renderNationPoints() {
-  const nationPointsPanel = document.getElementById("nation-points-panel");
-  if (!nationPointsPanel) return;
+  const survivorPointsPanel = document.getElementById("survivor-points-panel");
+  if (!survivorPointsPanel) return;
   const standings = getNationPointStandings(state);
 
-  nationPointsPanel.innerHTML = `
+  survivorPointsPanel.innerHTML = `
     <div class="nation-points-layout">
       <section class="card">
         <div class="section-title">
-          <span>Last From Group</span>
+          <span>Group Survivors</span>
           <small>+${rules.nationPoints.lastFromGroup} when one country is last standing</small>
         </div>
         <div class="nation-race-grid">
@@ -461,11 +465,11 @@ function renderNationPoints() {
 
       <section class="card">
         <div class="section-title">
-          <span>Last From Federation</span>
+          <span>Federation Survivors</span>
           <small>+${rules.nationPoints.lastFromFederation} by confederation</small>
         </div>
         <div class="nation-race-grid federation-grid">
-          ${standings.federationRows.map(nationRaceCard).join("")}
+          ${standings.federationRows.map((row) => nationRaceCard(row, { compact: true })).join("")}
         </div>
       </section>
     </div>
@@ -548,6 +552,84 @@ function renderRules() {
         <a href="https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/match-schedule-fixtures-results-teams-stadiums">FIFA match schedule</a>.
       </p>
     </section>
+  `;
+}
+
+function renderScoreless() {
+  const scorelessPanel = document.getElementById("scoreless-panel");
+  if (!scorelessPanel) return;
+  const tracker = getScorelessGroupTracker(state);
+
+  scorelessPanel.innerHTML = `
+    <section class="card scoreless-card">
+      <div class="section-title">
+        <span>Scoreless Watch</span>
+        <small>${tracker.summary.scoreless} still scoreless, ${tracker.summary.scored} cleared</small>
+      </div>
+      <div class="scoreless-summary">
+        ${scorelessSummaryChip("Still", tracker.summary.scoreless)}
+        ${scorelessSummaryChip("Danger", tracker.summary.danger + tracker.summary.locked)}
+        ${scorelessSummaryChip("Cleared", tracker.summary.scored)}
+      </div>
+      <div class="scoreless-grid">
+        ${tracker.teams.map(scorelessTeamCard).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function scorelessSummaryChip(label, value) {
+  return `
+    <div class="scoreless-summary-chip">
+      <strong>${value}</strong>
+      <span>${escapeHtml(label)}</span>
+    </div>
+  `;
+}
+
+function scorelessTeamCard(row) {
+  const labelByStatus = {
+    locked: "Scoreless",
+    danger: `${row.remaining} left`,
+    open: "Waiting",
+    cleared: "Scored",
+  };
+  return `
+    <article class="scoreless-team-card ${escapeHtml(row.status)}">
+      <div class="scoreless-team-main">
+        <div>
+          <strong>${escapeHtml(row.team)}</strong>
+          <span>Group ${escapeHtml(row.group)} · ${escapeHtml(row.federation)}</span>
+        </div>
+        <span class="owner-chip" style="--owner-color:${ownerColor(row.owner)}">${escapeHtml(row.owner)}</span>
+      </div>
+      <div class="scoreless-team-meta">
+        <span>${row.goals} GF</span>
+        <span>${escapeHtml(labelByStatus[row.status] ?? "Open")}</span>
+      </div>
+      <div class="scoreless-match-row">
+        ${row.matches.map(scorelessMatchBubble).join("")}
+      </div>
+    </article>
+  `;
+}
+
+function scorelessMatchBubble(match) {
+  const labelByState = {
+    scored: "✓",
+    blank: "X",
+    pending: "-",
+  };
+  const titleByState = {
+    scored: `${match.goals} goal${match.goals === 1 ? "" : "s"}`,
+    blank: "No goals",
+    pending: "Pending",
+  };
+  return `
+    <span class="scoreless-match-bubble ${escapeHtml(match.state)}" title="${escapeHtml(`Match ${match.slot} vs ${match.opponent}: ${titleByState[match.state]}`)}">
+      <span>${escapeHtml(labelByState[match.state] ?? "-")}</span>
+      <small>${match.slot}</small>
+    </span>
   `;
 }
 
@@ -752,6 +834,7 @@ function groupTable(group, rows, qualified) {
     const match = { ...fixture, ...(state.matches[fixture.id] ?? {}) };
     return isCompletedMatch(match);
   });
+  const allGroupsComplete = areAllGroupsComplete(state);
 
   return `
     <section class="card">
@@ -759,12 +842,12 @@ function groupTable(group, rows, qualified) {
         <span>Group ${group}</span>
         <small>${complete ? "Complete" : "Open"}</small>
       </div>
-      ${standingsTable(rows, qualified, "standings-table")}
+      ${standingsTable(rows, qualified, "standings-table", { showAdvancement: true, allGroupsComplete })}
     </section>
   `;
 }
 
-function standingsTable(rows, qualified, className = "") {
+function standingsTable(rows, qualified, className = "", options = {}) {
   return `
     <table class="${escapeHtml(className)}">
       <thead>
@@ -775,20 +858,43 @@ function standingsTable(rows, qualified, className = "") {
       <tbody>
         ${rows
           .map(
-            (row) => `
-              <tr class="${qualified.has(row.team) ? "qualified-row" : ""}">
-                <td>${row.rank}. ${escapeHtml(row.team)}</td>
+            (row) => {
+              const advancement = options.showAdvancement ? advancementStatus(row, qualified, options.allGroupsComplete) : null;
+              return `
+              <tr class="${advancement ? `advancement-${advancement.tone}` : qualified.has(row.team) ? "qualified-row" : ""}">
+                <td>
+                  <div class="standings-team-cell">
+                    <span>${row.rank}. ${escapeHtml(row.team)}</span>
+                    ${advancement ? `<span class="advance-badge ${advancement.tone}">${escapeHtml(advancement.label)}</span>` : ""}
+                  </div>
+                </td>
                 <td>${row.points}</td>
                 <td>${row.gd > 0 ? "+" : ""}${row.gd}</td>
                 <td>${row.gf}</td>
                 <td><span class="owner-chip" style="--owner-color:${ownerColor(row.owner)}">${escapeHtml(row.owner)}</span></td>
               </tr>
-            `,
+            `;
+            },
           )
           .join("")}
       </tbody>
     </table>
   `;
+}
+
+function advancementStatus(row, qualified, allGroupsComplete) {
+  return getAdvancementStatus(row, qualified, allGroupsComplete);
+}
+
+export function getAdvancementStatus(row, qualified, allGroupsComplete) {
+  if (qualified.has(row.team)) {
+    return row.rank === 3
+      ? { label: "IN 3RD", tone: "advancing" }
+      : { label: "IN", tone: "advancing" };
+  }
+  if (!allGroupsComplete && row.rank <= 2) return { label: "IN", tone: "advancing" };
+  if (!allGroupsComplete && row.rank === 3) return { label: "3RD", tone: "bubble" };
+  return { label: "OUT", tone: "out" };
 }
 
 function bracketRound(round) {
@@ -822,10 +928,10 @@ function bracketSlot(slot) {
   `;
 }
 
-function nationRaceCard(row) {
-  const contenders = row.contenders.slice(0, 4);
+function nationRaceCard(row, { compact = false } = {}) {
+  const contenders = row.contenders;
   return `
-    <article class="nation-race-card">
+    <article class="nation-race-card ${compact ? "compact" : ""}">
       <div class="nation-race-head">
         <div>
           <strong>${escapeHtml(row.title)}</strong>
@@ -835,21 +941,21 @@ function nationRaceCard(row) {
       </div>
       ${
         row.winner
-          ? `<div class="nation-race-winner"><strong>${escapeHtml(row.winner)}</strong><span class="owner-chip" style="--owner-color:${ownerColor(row.owner)}">${escapeHtml(row.owner)}</span></div>`
+          ? `<div class="nation-race-winner"><span>Last standing</span><strong>${escapeHtml(row.winner)}</strong><span class="owner-chip" style="--owner-color:${ownerColor(row.owner)}">${escapeHtml(row.owner)}</span></div>`
           : ""
       }
-      <div class="nation-contender-list">
-        ${contenders.map(nationContenderRow).join("")}
+      <div class="nation-contender-list ${compact ? "compact" : ""}">
+        ${contenders.map((contender) => nationContenderRow(contender, { compact })).join("")}
       </div>
     </article>
   `;
 }
 
-function nationContenderRow(row) {
+function nationContenderRow(row, { compact = false } = {}) {
   return `
-    <div class="nation-contender-row ${row.alive ? "" : "eliminated"}">
+    <div class="nation-contender-row ${compact ? "compact" : ""} ${row.alive ? "" : "eliminated"}">
       <div>
-        <strong>${escapeHtml(row.team)}</strong>
+        <strong>${escapeHtml(row.team)} <span class="survival-badge ${row.alive ? "live" : "eliminated"}">${row.alive ? "LIVE" : "ELIM"}</span></strong>
         <span>${escapeHtml(row.label)} · ${escapeHtml(row.group)} · ${escapeHtml(row.federation)}</span>
       </div>
       <span class="owner-chip" style="--owner-color:${ownerColor(row.owner)}">${escapeHtml(row.owner)}</span>

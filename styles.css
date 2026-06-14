@@ -887,7 +887,7 @@ button:disabled {
 }
 
 .nation-race-grid.federation-grid {
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
 }
 
 .nation-race-card {
@@ -897,6 +897,10 @@ button:disabled {
   border-radius: 8px;
   background: #fbfcfe;
   padding: 10px;
+}
+
+.nation-race-card.compact {
+  align-content: start;
 }
 
 .nation-race-head,
@@ -922,15 +926,29 @@ button:disabled {
 }
 
 .nation-race-winner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   border: 1px solid #b8dbc0;
   border-radius: 8px;
   background: #edf9f0;
   padding: 8px;
 }
 
+.nation-race-winner > span:first-child {
+  grid-column: 1 / -1;
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
 .nation-contender-list {
   display: grid;
   gap: 6px;
+}
+
+.nation-contender-list.compact {
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
 }
 
 .nation-contender-row {
@@ -939,8 +957,186 @@ button:disabled {
   padding-top: 6px;
 }
 
+.nation-contender-row.compact {
+  display: grid;
+  align-content: space-between;
+  min-height: 92px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px;
+}
+
+.nation-contender-row.compact .owner-chip {
+  justify-self: start;
+  margin-top: 6px;
+}
+
 .nation-contender-row.eliminated {
   opacity: 0.62;
+}
+
+.survival-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 34px;
+  min-height: 18px;
+  margin-left: 6px;
+  border-radius: 999px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 950;
+  line-height: 1;
+  vertical-align: 2px;
+}
+
+.survival-badge.live {
+  background: #e7f8ec;
+  color: #166529;
+}
+
+.survival-badge.eliminated {
+  background: #fff0ee;
+  color: #a33129;
+}
+
+.scoreless-card {
+  display: grid;
+  gap: 12px;
+}
+
+.scoreless-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.scoreless-summary-chip {
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+  padding: 10px;
+}
+
+.scoreless-summary-chip strong {
+  color: var(--ink);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.scoreless-summary-chip span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.scoreless-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.scoreless-team-card {
+  display: grid;
+  gap: 10px;
+  min-height: 152px;
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--gold);
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px;
+}
+
+.scoreless-team-card.locked {
+  border-left-color: var(--coral);
+  background: #fff8f7;
+}
+
+.scoreless-team-card.danger {
+  border-left-color: var(--gold);
+  background: #fffdf6;
+}
+
+.scoreless-team-card.open {
+  border-left-color: #94a3b8;
+}
+
+.scoreless-team-card.cleared {
+  border-left-color: #cbd5e1;
+  background: #f4f6f8;
+  color: #64748b;
+  opacity: 0.68;
+}
+
+.scoreless-team-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+}
+
+.scoreless-team-main strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.scoreless-team-main span:not(.owner-chip),
+.scoreless-team-meta {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.scoreless-team-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.scoreless-match-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.scoreless-match-bubble {
+  display: grid;
+  place-items: center;
+  min-height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--soft);
+  color: var(--muted);
+  font-weight: 950;
+}
+
+.scoreless-match-bubble span {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.scoreless-match-bubble small {
+  font-size: 10px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.scoreless-match-bubble.scored {
+  border-color: #a7d9b5;
+  background: #e7f8ec;
+  color: #166529;
+}
+
+.scoreless-match-bubble.blank {
+  border-color: #f0b7af;
+  background: #fff0ee;
+  color: #a33129;
+}
+
+.scoreless-team-card.cleared .scoreless-match-bubble:not(.scored) {
+  opacity: 0.45;
 }
 
 .stepper {
@@ -1007,8 +1203,73 @@ th {
   text-transform: uppercase;
 }
 
-.qualified-row {
+.qualified-row,
+.advancement-advancing {
   background: #f2fbf6;
+}
+
+.advancement-bubble {
+  background: #fffaf0;
+}
+
+.advancement-out {
+  background: #fff8f7;
+}
+
+.standings-table tr {
+  border-left: 4px solid transparent;
+}
+
+.standings-table tr.advancement-advancing {
+  border-left-color: var(--green);
+}
+
+.standings-table tr.advancement-bubble {
+  border-left-color: var(--gold);
+}
+
+.standings-table tr.advancement-out {
+  border-left-color: var(--coral);
+}
+
+.standings-team-cell {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.standings-team-cell > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.advance-badge {
+  justify-self: start;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.advance-badge.advancing {
+  border-color: #a7d9b5;
+  background: #e7f8ec;
+  color: #166529;
+}
+
+.advance-badge.bubble {
+  border-color: #f1d28a;
+  background: #fff4cf;
+  color: #815b09;
+}
+
+.advance-badge.out {
+  border-color: #f0b8b1;
+  background: #fff0ee;
+  color: #a33129;
 }
 
 .draft-table-wrap {

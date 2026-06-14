@@ -12,6 +12,7 @@ import {
   getPlayerGoalTotals,
   getRecentPointEvents,
   getRuleGroups,
+  getScorelessGroupTracker,
 } from "../pool-core.mjs";
 
 test("match-level selected-player goals roll into totals and scoring", () => {
@@ -72,7 +73,7 @@ test("rules reference groups related scoring paths", () => {
 
   assert.deepEqual(
     groups.map((group) => group.title),
-    ["Match Results", "Group Stage", "Knockout Stage", "Selected Players", "Tournament Awards", "Nation Points"],
+    ["Match Results", "Group Stage", "Knockout Stage", "Selected Players", "Tournament Awards", "Survivor Points"],
   );
 
   const selectedPlayers = groups.find((group) => group.title === "Selected Players");
@@ -132,4 +133,46 @@ test("nation point standings split last-standing races by group and federation",
   assert.equal(concacaf.title, "CONCACAF");
   assert.equal(concacaf.points, 5);
   assert.ok(concacaf.contenders.some((row) => row.team === "Mexico"));
+});
+
+test("scoreless tracker keeps scoreless teams ahead of teams that have scored", () => {
+  const state = createEmptyState();
+  state.matches["g-a-01"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-a-02"] = { homeScore: 0, awayScore: 0, status: "final" };
+
+  const tracker = getScorelessGroupTracker(state);
+  const mexico = tracker.teams.find((row) => row.team === "Mexico");
+  const southAfrica = tracker.teams.find((row) => row.team === "South Africa");
+  const czechia = tracker.teams.find((row) => row.team === "Czechia");
+
+  assert.equal(tracker.summary.scoreless, 47);
+  assert.equal(tracker.summary.scored, 1);
+  assert.equal(mexico.status, "cleared");
+  assert.equal(southAfrica.status, "danger");
+  assert.equal(czechia.status, "danger");
+  assert.deepEqual(
+    southAfrica.matches.map((match) => match.state),
+    ["blank", "pending", "pending"],
+  );
+  assert.deepEqual(
+    czechia.matches.map((match) => match.state),
+    ["blank", "pending", "pending"],
+  );
+  assert.ok(tracker.teams.findIndex((row) => row.team === "South Africa") < tracker.teams.findIndex((row) => row.team === "Mexico"));
+});
+
+test("nation point standings show final last-standing winner after champion is crowned", () => {
+  const state = createEmptyState();
+  state.customMatches = [
+    { id: "custom-r32-1", stage: "r32", home: "Brazil", away: "Haiti", homeScore: 2, awayScore: 0, status: "final" },
+    { id: "custom-r32-2", stage: "r32", home: "Morocco", away: "Scotland", homeScore: 1, awayScore: 0, status: "final" },
+    { id: "custom-r16-1", stage: "r16", home: "Brazil", away: "Morocco", homeScore: 3, awayScore: 1, status: "final" },
+    { id: "custom-final-1", stage: "final", home: "Brazil", away: "France", homeScore: 1, awayScore: 0, status: "final" },
+  ];
+
+  const groupC = getNationPointStandings(state).groupRows.find((row) => row.key === "C");
+
+  assert.equal(groupC.winner, "Brazil");
+  assert.equal(groupC.status, "Last standing: Brazil");
+  assert.ok(groupC.contenders.find((row) => row.team === "Brazil" && row.label === "Champion"));
 });
