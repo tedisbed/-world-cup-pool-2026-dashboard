@@ -10,6 +10,7 @@ import {
   getNationPointStandings,
   getOwnerOpportunityRows,
   getPlayerGoalTotals,
+  getProjectedGroupBubbleTable,
   getRecentPointEvents,
   getRuleGroups,
   getScorelessOwnerTracker,
@@ -128,6 +129,22 @@ test("projected third-place table includes every group before groups are complet
       .map((row) => row.team),
     ["Austria", "Germany", "Ghana", "Iran", "Morocco", "Norway", "Portugal", "Qatar"],
   );
+});
+
+test("projected group bubble table includes third and fourth place teams", () => {
+  const rows = getProjectedGroupBubbleTable(createEmptyState());
+
+  assert.equal(rows.length, 24);
+  assert.equal(rows.filter((row) => row.groupRank === 3).length, 12);
+  assert.equal(rows.filter((row) => row.groupRank === 4).length, 12);
+  assert.deepEqual(
+    rows.slice(0, 2).map((row) => ({ team: row.team, groupRank: row.groupRank, thirdPlaceRank: row.thirdPlaceRank })),
+    [
+      { team: "Austria", groupRank: 3, thirdPlaceRank: 1 },
+      { team: "Germany", groupRank: 3, thirdPlaceRank: 2 },
+    ],
+  );
+  assert.ok(rows.find((row) => row.team === "Jordan" && row.groupRank === 4));
 });
 
 test("nation point standings split last-standing races by group and federation", () => {

@@ -662,6 +662,26 @@ export function getProjectedThirdPlaceTable(state = createEmptyState()) {
     .sort(compareGroupRecords);
 }
 
+export function getProjectedGroupBubbleTable(state = createEmptyState()) {
+  const standings = getGroupStandings(state);
+  const thirdPlaceRows = getProjectedThirdPlaceTable(state).map((row, index) => ({
+    ...row,
+    groupRank: 3,
+    thirdPlaceRank: index + 1,
+  }));
+  const fourthPlaceRows = groups
+    .map((group) => standings[group][3])
+    .filter(Boolean)
+    .sort(compareGroupRecords)
+    .map((row) => ({
+      ...row,
+      groupRank: 4,
+      thirdPlaceRank: 0,
+    }));
+
+  return [...thirdPlaceRows, ...fourthPlaceRows];
+}
+
 export function calculateScores(inputState = createEmptyState()) {
   const state = normalizeState(inputState);
   const scoreRows = new Map(owners.map((owner) => [owner, { owner, score: 0, details: [] }]));

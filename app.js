@@ -14,6 +14,7 @@ import {
   getOwnerForTeam,
   getOwnerOpportunityRows,
   getPlayerGoalTotals,
+  getProjectedGroupBubbleTable,
   getProjectedThirdPlaceTable,
   getQualifiedTeams,
   getRuleGroups,
@@ -408,6 +409,7 @@ function renderGroups(result) {
   const qualified = getQualifiedTeams(state);
   const allGroupsComplete = areAllGroupsComplete(state);
   const thirdTable = allGroupsComplete ? getThirdPlaceTable(state) : getProjectedThirdPlaceTable(state);
+  const bubbleTable = getProjectedGroupBubbleTable(state);
   const projectedThirdPlaceTeams = new Set(thirdTable.slice(0, 8).map((row) => row.team));
 
   groupsPanel.innerHTML = `
@@ -418,12 +420,12 @@ function renderGroups(result) {
     </div>
     <section class="card" style="margin-top:12px">
       <div class="section-title">
-        <span>Third-Place Table</span>
-        <small>${allGroupsComplete ? "Top 8 third-place teams advance; 9-12 are out" : "Projected from current standings; top 8 advance"}</small>
+        <span>Third / Fourth Bubble</span>
+        <small>${allGroupsComplete ? "Third-place top 8 advance; all fourth-place teams are out" : "Projected from current standings; includes every 3rd and 4th place team"}</small>
       </div>
       ${
-        thirdTable.length
-          ? standingsTable(thirdTable.map((row, index) => ({ ...row, rank: index + 1 })), qualified, "standings-table", {
+        bubbleTable.length
+          ? standingsTable(bubbleTable.map((row) => ({ ...row, rank: row.groupRank })), qualified, "standings-table", {
               showThirdPlaceStatus: true,
               allGroupsComplete,
             })
@@ -1043,7 +1045,11 @@ export function getAdvancementStatus(row, qualified, allGroupsComplete, projecte
 }
 
 function thirdPlaceStatus(row, allGroupsComplete) {
-  if (row.rank <= 8) {
+  if (row.groupRank === 4 || row.rank === 4) {
+    return { label: "OUT 4TH", tone: "out" };
+  }
+  const thirdPlaceRank = row.thirdPlaceRank ?? row.rank;
+  if (thirdPlaceRank <= 8) {
     return { label: allGroupsComplete ? "ADVANCES" : "PROJ ADV 3RD", tone: "advancing" };
   }
   return { label: allGroupsComplete ? "OUT 3RD" : "PROJ OUT 3RD", tone: "out" };
