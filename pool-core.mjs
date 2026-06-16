@@ -218,10 +218,10 @@ export const teams = [
   { name: "Egypt", group: "G", federation: "CAF" },
   { name: "Iran", group: "G", federation: "AFC" },
   { name: "New Zealand", group: "G", federation: "OFC" },
-  { name: "Spain", group: "H", federation: "UEFA" },
-  { name: "Cape Verde", group: "H", federation: "CAF" },
-  { name: "Saudi Arabia", group: "H", federation: "AFC" },
-  { name: "Uruguay", group: "H", federation: "CONMEBOL" },
+  { name: "Spain", group: "H", federation: "UEFA", fifaRank: 1 },
+  { name: "Cape Verde", group: "H", federation: "CAF", fifaRank: 68 },
+  { name: "Saudi Arabia", group: "H", federation: "AFC", fifaRank: 60 },
+  { name: "Uruguay", group: "H", federation: "CONMEBOL", fifaRank: 16 },
   { name: "France", group: "I", federation: "UEFA" },
   { name: "Senegal", group: "I", federation: "CAF" },
   { name: "Iraq", group: "I", federation: "AFC" },
@@ -567,6 +567,8 @@ export function getGroupStandings(state = createEmptyState()) {
         ga: 0,
         gd: 0,
         points: 0,
+        fairPlay: team.fairPlay ?? 0,
+        fifaRank: team.fifaRank ?? 999,
       },
     ]),
   );
@@ -607,9 +609,9 @@ export function getGroupStandings(state = createEmptyState()) {
   }
 
   for (const group of groups) {
-    standings[group] = Object.values(records)
-      .filter((record) => record.group === group)
-      .sort(compareGroupRecords)
+    const groupRecords = Object.values(records).filter((record) => record.group === group);
+    const groupMatches = getAllMatches(state).filter((match) => match.stage === "group" && match.group === group && isCompletedMatch(match));
+    standings[group] = rankGroupRecords(groupRecords, groupMatches)
       .map((record, index) => ({ ...record, rank: index + 1 }));
   }
 
@@ -1253,9 +1255,76 @@ function compareGroupRecords(a, b) {
     b.points - a.points ||
     b.gd - a.gd ||
     b.gf - a.gf ||
-    a.ga - b.ga ||
+    b.fairPlay - a.fairPlay ||
+    a.fifaRank - b.fifaRank ||
     a.team.localeCompare(b.team)
   );
+}
+
+function rankGroupRecords(records, matches) {
+  return groupBy(records, (record) => record.points)
+    .sort((a, b) => Number(b.key) - Number(a.key))
+    .flatMap((group) => (group.rows.length > 1 ? breakGroupTie(group.rows, matches) : group.rows));
+}
+
+function breakGroupTie(records, matches) {
+  const h2hRows = records.map((record) => ({ ...record, h2h: headToHeadRecord(record.team, records, matches) }));
+  const h2hGroups = groupBy(h2hRows, (row) => `${row.h2h.points}|${row.h2h.gd}|${row.h2h.gf}`)
+    .sort((a, b) => compareHeadToHeadKey(a.key, b.key));
+
+  if (h2hGroups.length > 1) {
+    return h2hGroups.flatMap((group) => {
+      const rows = group.rows.map(({ h2h, ...row }) => row);
+      return rows.length > 1 && rows.length < records.length ? breakGroupTie(rows, matches) : rows;
+    });
+  }
+
+  return [...records].sort(compareOverallGroupTie);
+}
+
+function headToHeadRecord(team, tiedRecords, matches) {
+  const tiedTeams = new Set(tiedRecords.map((record) => record.team));
+  const record = { points: 0, gf: 0, ga: 0, gd: 0 };
+
+  for (const match of matches) {
+    if (!tiedTeams.has(match.home) || !tiedTeams.has(match.away)) continue;
+    if (match.home !== team && match.away !== team) continue;
+    const goalsFor = match.home === team ? numberOrZero(match.homeScore) : numberOrZero(match.awayScore);
+    const goalsAgainst = match.home === team ? numberOrZero(match.awayScore) : numberOrZero(match.homeScore);
+    record.gf += goalsFor;
+    record.ga += goalsAgainst;
+    if (goalsFor > goalsAgainst) record.points += 3;
+    else if (goalsFor === goalsAgainst) record.points += 1;
+  }
+
+  record.gd = record.gf - record.ga;
+  return record;
+}
+
+function compareHeadToHeadKey(a, b) {
+  const [aPoints, aGd, aGf] = a.split("|").map(Number);
+  const [bPoints, bGd, bGf] = b.split("|").map(Number);
+  return bPoints - aPoints || bGd - aGd || bGf - aGf;
+}
+
+function compareOverallGroupTie(a, b) {
+  return (
+    b.gd - a.gd ||
+    b.gf - a.gf ||
+    b.fairPlay - a.fairPlay ||
+    a.fifaRank - b.fifaRank ||
+    a.team.localeCompare(b.team)
+  );
+}
+
+function groupBy(rows, keyForRow) {
+  const groups = new Map();
+  for (const row of rows) {
+    const key = keyForRow(row);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+  return [...groups.entries()].map(([key, groupedRows]) => ({ key, rows: groupedRows }));
 }
 
 function getBracketMatchWinners(state) {

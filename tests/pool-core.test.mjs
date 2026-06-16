@@ -6,6 +6,7 @@ import {
   createEmptyState,
   getMatchesByDate,
   getMatchesForDate,
+  getGroupStandings,
   getKnockoutBracket,
   getNationPointStandings,
   getOwnerOpportunityRows,
@@ -46,6 +47,32 @@ test("matches can be filtered to one date for the today view", () => {
   assert.deepEqual(
     matches.map((match) => match.id),
     ["g-b-01", "g-d-01"],
+  );
+});
+
+test("group standings use head-to-head before alphabetical order", () => {
+  const state = createEmptyState();
+  state.matches["g-h-01"] = { homeScore: 1, awayScore: 1, status: "final" };
+  state.matches["g-h-02"] = { homeScore: 0, awayScore: 1, status: "final" };
+
+  const groupH = getGroupStandings(state).H;
+
+  assert.deepEqual(
+    groupH.map((row) => row.team),
+    ["Cape Verde", "Uruguay", "Saudi Arabia", "Spain"],
+  );
+});
+
+test("group standings use overall goal difference when head-to-head is still tied", () => {
+  const state = createEmptyState();
+  state.matches["g-h-01"] = { homeScore: 1, awayScore: 1, status: "final" };
+  state.matches["g-h-04"] = { homeScore: 3, awayScore: 0, status: "final" };
+
+  const groupH = getGroupStandings(state).H;
+
+  assert.deepEqual(
+    groupH.map((row) => row.team),
+    ["Spain", "Uruguay", "Saudi Arabia", "Cape Verde"],
   );
 });
 
@@ -127,7 +154,7 @@ test("projected third-place table includes every group before groups are complet
     getProjectedThirdPlaceTable(state)
       .slice(0, 8)
       .map((row) => row.team),
-    ["Austria", "Germany", "Ghana", "Iran", "Morocco", "Norway", "Portugal", "Qatar"],
+    ["Saudi Arabia", "Austria", "Germany", "Ghana", "Iran", "Morocco", "Norway", "Portugal"],
   );
 });
 
@@ -140,8 +167,8 @@ test("projected group bubble table includes third and fourth place teams", () =>
   assert.deepEqual(
     rows.slice(0, 2).map((row) => ({ team: row.team, groupRank: row.groupRank, thirdPlaceRank: row.thirdPlaceRank })),
     [
-      { team: "Austria", groupRank: 3, thirdPlaceRank: 1 },
-      { team: "Germany", groupRank: 3, thirdPlaceRank: 2 },
+      { team: "Saudi Arabia", groupRank: 3, thirdPlaceRank: 1 },
+      { team: "Austria", groupRank: 3, thirdPlaceRank: 2 },
     ],
   );
   assert.ok(rows.find((row) => row.team === "Jordan" && row.groupRank === 4));
