@@ -1,128 +1,29 @@
 import { createEmptyState, normalizeState } from "./pool-core.mjs";
 
-export const storageKey = "world-cup-pool-dashboard-v1";
 export const livePublishedStatePath = "./data/live-state.json";
-export const publishedStatePath = "./data/state.json";
-export const dataSourceConfigPath = "./data/source-config.json";
-export const defaultPublishedSources = [
-  { type: "json", url: livePublishedStatePath },
-  { type: "json", url: publishedStatePath },
-];
 
 export async function loadInitialState({
-  fetchJson,
-  fetchConfig = fetchDataSourceConfig,
-  fetchSource = fetchPublishedSource,
-  storage = globalThis.localStorage,
-  key = storageKey,
+  fetchJson = fetchLiveState,
 } = {}) {
-  try {
-    if (fetchJson) return normalizeState(await fetchJson(publishedStatePath));
-    return await loadPublishedState({ fetchConfig, fetchSource });
-  } catch {
-    return loadSavedState(storage, key);
-  }
+  return loadPublishedState({ fetchJson });
 }
 
 export async function loadPublishedState({
-  fetchConfig = fetchDataSourceConfig,
-  fetchSource = fetchPublishedSource,
+  fetchJson = fetchLiveState,
 } = {}) {
-  const configuredSources = await getConfiguredSources(fetchConfig);
-  const sources = uniqueSources([...configuredSources, ...defaultPublishedSources]);
-  let lastError = new Error("No published data sources configured");
-
-  for (const source of sources) {
-    try {
-      const state = await fetchSource(source);
-      return normalizeState(sourceTextToState(source, state));
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  throw lastError;
-}
-
-export function loadSavedState(storage = globalThis.localStorage, key = storageKey) {
   try {
-    const raw = storage?.getItem(key);
-    return raw ? normalizeState(JSON.parse(raw)) : createEmptyState();
+    return normalizeState(await fetchJson(livePublishedStatePath));
   } catch {
     return createEmptyState();
   }
 }
 
-export function saveStateSnapshot(state, storage = globalThis.localStorage, key = storageKey) {
-  storage?.setItem(key, JSON.stringify(state));
-}
-
-async function fetchDataSourceConfig() {
-  const response = await fetch(dataSourceConfigPath, { cache: "no-store" });
+async function fetchLiveState(path = livePublishedStatePath) {
+  const response = await fetch(path, { cache: "no-store" });
   if (!response.ok) {
-    throw new Error(`Unable to load data source config: ${response.status}`);
+    throw new Error(`Unable to load live state from ${path}: ${response.status}`);
   }
   return response.json();
-}
-
-async function fetchPublishedSource(source) {
-  const response = await fetch(source.url, { cache: "no-store" });
-  if (!response.ok) {
-    throw new Error(`Unable to load published state from ${source.url}: ${response.status}`);
-  }
-
-  if (isCsvSource(source)) {
-    return response.text();
-  }
-
-  return response.json();
-}
-
-async function getConfiguredSources(fetchConfig) {
-  try {
-    const config = await fetchConfig();
-    return normalizeSources(config?.sources);
-  } catch {
-    return [];
-  }
-}
-
-function normalizeSources(sources) {
-  if (!Array.isArray(sources)) return [];
-
-  return sources
-    .map((source) => ({
-      type: normalizeSourceType(source?.type),
-      url: String(source?.url ?? "").trim(),
-    }))
-    .filter((source) => source.url);
-}
-
-function normalizeSourceType(type) {
-  const normalized = String(type ?? "json").trim().toLowerCase();
-  if (["csv", "google-sheet-csv", "google_sheets_csv", "sheet-csv"].includes(normalized)) return "csv";
-  return "json";
-}
-
-function uniqueSources(sources) {
-  const seen = new Set();
-  return sources.filter((source) => {
-    const key = `${source.type}:${source.url}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function sourceTextToState(source, state) {
-  if (typeof state === "string" && isCsvSource(source)) {
-    return parseStateCsv(state);
-  }
-  return state;
-}
-
-function isCsvSource(source) {
-  return normalizeSourceType(source?.type) === "csv";
 }
 
 export function parseStateCsv(csv) {

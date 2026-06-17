@@ -31,7 +31,7 @@ import {
   stageLabels,
   teams,
 } from "./pool-core.mjs";
-import { loadInitialState, saveStateSnapshot, storageKey } from "./app-state.mjs";
+import { loadInitialState } from "./app-state.mjs";
 
 const adminStorageKey = "world-cup-pool-dashboard-admin-unlocked";
 const adminPassword = "Noah";
@@ -1378,12 +1378,7 @@ function loadDemoResults() {
 }
 
 function saveAndRender() {
-  saveState();
   render();
-}
-
-function saveState() {
-  saveStateSnapshot(state, localStorage, storageKey);
 }
 
 function downloadFile(filename, content, type) {

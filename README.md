@@ -23,30 +23,19 @@ http://localhost:8765
 - Lets you enter final scores and penalty winners.
 - Lets you add knockout match rows once the bracket is known.
 - Tracks selected-player goals and award winners.
-- Autosaves in browser storage.
 - Exports JSON snapshots, detailed score CSV, and match CSV.
-- Loads the shared published scoreboard from a configured Google Sheet or
-  `data/state.json` when hosted.
-- Can refresh World Cup scores from API-Football into `data/live-state.json`
-  through a scheduled GitHub Action.
+- Loads the shared published scoreboard from `data/live-state.json`.
+- Refreshes World Cup scores from API-Football through a scheduled GitHub
+  Action.
 
 ## Publish Score Updates on GitHub Pages
 
-The default hosted config reads published data sources in this order:
+The hosted app has one public data source:
 
 1. The generated `data/live-state.json` file.
-2. The published Google Sheet CSV listed in `data/source-config.json`.
-3. The bundled `data/state.json` file.
-4. The browser's saved local state.
-5. An empty pool state.
+2. An empty state if the live file cannot be loaded.
 
-If you change `data/source-config.json`, those configured sources are tried
-first, then the default live JSON and bundled JSON fallbacks.
-
-Browser edits still save locally. Visitors see the first published source that
-can be loaded when they open the GitHub Pages site.
-
-### Option A: Auto-Refresh API-Football Data
+### Auto-Refresh API-Football Data
 
 The repo includes a scheduled GitHub Action at
 `.github/workflows/update-world-cup-data.yml`. During the tournament window, it
@@ -67,37 +56,21 @@ in the fixture response. Awards remain manual. The importer has a hard cap of 95
 API calls per UTC day, tracked in `data/api-request-budget.json`; if the cap is
 hit, the site keeps serving the last good `data/live-state.json`.
 
-### Option B: Keep Using `data/state.json`
+### One-Time Google Sheet Backfill
 
-1. Open the dashboard locally or on GitHub Pages.
-2. Unlock admin controls and enter score, award, or knockout updates.
-3. Export a `JSON Snapshot`.
-4. Replace `data/state.json` with the exported JSON.
-5. Commit and push the change to GitHub.
-6. Reload the GitHub Pages site after the Pages deploy finishes.
+If historical match rows still live in the old Google Sheet, migrate them once:
 
-If `data/state.json` cannot be loaded, the app falls back to the browser's saved
-local state. If neither source exists, it starts from an empty pool state.
-
-### Option C: Use a Published Google Sheet CSV
-
-Edit `data/source-config.json` and set the first source URL to a published CSV:
-
-```json
-{
-  "sources": [
-    {
-      "type": "google-sheet-csv",
-      "url": "https://docs.google.com/spreadsheets/d/e/YOUR_PUBLISHED_ID/pub?gid=0&single=true&output=csv"
-    }
-  ]
-}
+```bash
+node scripts/backfill-from-google-sheet.mjs
 ```
 
-In Google Sheets, use **File > Share > Publish to web**, choose the sheet tab
-that contains the dashboard state rows, and publish it as CSV. The published
-CSV must be public because GitHub Pages cannot use private Google APIs or
-secrets.
+The script reads the old published Sheet CSV, merges it into
+`data/live-state.json`, and preserves API-owned values when both sources have a
+result. You can also pass a local CSV:
+
+```bash
+node scripts/backfill-from-google-sheet.mjs --csv path/to/export.csv
+```
 
 Sheet columns:
 
@@ -117,47 +90,3 @@ Only the columns needed for a row type have to be filled in.
 - `player_goal`: records manual selected-player goal totals by player name.
 - `award`: records award winners such as `goldenBall`, `goldenBoot`,
   `goldenGlove`, or `bestYoungPlayer`.
-
-If the published Sheet URL is blank or unavailable, the app automatically tries
-the default live JSON and bundled JSON fallbacks.
-
-### Option D: Use an Apps Script JSON URL
-
-If a Sheet needs multiple tabs or richer logic, publish an Apps Script web app
-that returns the same JSON shape as `data/state.json`, then configure it as:
-
-```json
-{
-  "sources": [
-    {
-      "type": "json",
-      "url": "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec"
-    }
-  ]
-}
-```
-
-The endpoint must allow anonymous `GET` access and return JSON with the
-dashboard state shape:
-
-```json
-{
-  "version": 1,
-  "matches": {},
-  "customMatches": [],
-  "matchPlayerGoals": {},
-  "playerGoals": {},
-  "awards": {}
-}
-```
-
-## Google Sheet Path
-
-Use the CSV exports as the first sheet structure:
-
-- `Scores CSV`: leaderboard plus scoring detail rows.
-- `Matches CSV`: fixture/result ledger with owners.
-- `JSON Snapshot`: canonical state that can be pasted back into the dashboard.
-
-The configured Sheet-backed version can keep the match ledger as the source of
-truth, then have this page read the published CSV or Apps Script JSON endpoint.
