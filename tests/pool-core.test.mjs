@@ -18,7 +18,17 @@ import {
   getScorelessGroupTracker,
   getProjectedThirdPlaceTable,
   getThirdPlaceTable,
+  teams,
 } from "../pool-core.mjs";
+
+test("all World Cup teams include FIFA ranking metadata for tiebreakers", () => {
+  const teamsWithoutRanking = teams.filter((team) => !Number.isInteger(team.fifaRank));
+
+  assert.equal(teams.length, 48);
+  assert.deepEqual(teamsWithoutRanking, []);
+  assert.equal(teams.find((team) => team.name === "Argentina").fifaRank, 1);
+  assert.equal(teams.find((team) => team.name === "Spain").fifaRank, 2);
+});
 
 test("match-level selected-player goals roll into totals and scoring", () => {
   const state = createEmptyState();
@@ -154,7 +164,7 @@ test("projected third-place table includes every group before groups are complet
     getProjectedThirdPlaceTable(state)
       .slice(0, 8)
       .map((row) => row.team),
-    ["Saudi Arabia", "Austria", "Germany", "Ghana", "Iran", "Morocco", "Norway", "Portugal"],
+    ["Australia", "Norway", "Panama", "Egypt", "Algeria", "Scotland", "Tunisia", "Ivory Coast"],
   );
 });
 
@@ -167,8 +177,8 @@ test("projected group bubble table includes third and fourth place teams", () =>
   assert.deepEqual(
     rows.slice(0, 2).map((row) => ({ team: row.team, groupRank: row.groupRank, thirdPlaceRank: row.thirdPlaceRank })),
     [
-      { team: "Saudi Arabia", groupRank: 3, thirdPlaceRank: 1 },
-      { team: "Austria", groupRank: 3, thirdPlaceRank: 2 },
+      { team: "Australia", groupRank: 3, thirdPlaceRank: 1 },
+      { team: "Norway", groupRank: 3, thirdPlaceRank: 2 },
     ],
   );
   assert.ok(rows.find((row) => row.team === "Jordan" && row.groupRank === 4));

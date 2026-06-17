@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createEmptyState } from "../pool-core.mjs";
-import { loadInitialState, loadPublishedState } from "../app-state.mjs";
+import { defaultPublishedSources, loadInitialState, loadPublishedState } from "../app-state.mjs";
 
 function storageWith(value) {
   return {
@@ -24,6 +24,13 @@ test("published state is preferred over browser storage", async () => {
   });
 
   assert.equal(result.matches["g-a-01"].homeScore, 2);
+});
+
+test("default published sources prefer live generated state before bundled state", () => {
+  assert.deepEqual(defaultPublishedSources, [
+    { type: "json", url: "./data/live-state.json" },
+    { type: "json", url: "./data/state.json" },
+  ]);
 });
 
 test("configured Google Sheet CSV source is preferred over bundled JSON", async () => {

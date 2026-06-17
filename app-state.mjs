@@ -1,9 +1,13 @@
 import { createEmptyState, normalizeState } from "./pool-core.mjs";
 
 export const storageKey = "world-cup-pool-dashboard-v1";
+export const livePublishedStatePath = "./data/live-state.json";
 export const publishedStatePath = "./data/state.json";
 export const dataSourceConfigPath = "./data/source-config.json";
-export const defaultPublishedSources = [{ type: "json", url: publishedStatePath }];
+export const defaultPublishedSources = [
+  { type: "json", url: livePublishedStatePath },
+  { type: "json", url: publishedStatePath },
+];
 
 export async function loadInitialState({
   fetchJson,

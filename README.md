@@ -27,20 +27,47 @@ http://localhost:8765
 - Exports JSON snapshots, detailed score CSV, and match CSV.
 - Loads the shared published scoreboard from a configured Google Sheet or
   `data/state.json` when hosted.
+- Can refresh World Cup scores from API-Football into `data/live-state.json`
+  through a scheduled GitHub Action.
 
 ## Publish Score Updates on GitHub Pages
 
-The hosted app reads published data sources in this order:
+The default hosted config reads published data sources in this order:
 
-1. Any non-empty URLs listed in `data/source-config.json`.
-2. The bundled `data/state.json` file.
-3. The browser's saved local state.
-4. An empty pool state.
+1. The generated `data/live-state.json` file.
+2. The published Google Sheet CSV listed in `data/source-config.json`.
+3. The bundled `data/state.json` file.
+4. The browser's saved local state.
+5. An empty pool state.
+
+If you change `data/source-config.json`, those configured sources are tried
+first, then the default live JSON and bundled JSON fallbacks.
 
 Browser edits still save locally. Visitors see the first published source that
 can be loaded when they open the GitHub Pages site.
 
-### Option A: Keep Using `data/state.json`
+### Option A: Auto-Refresh API-Football Data
+
+The repo includes a scheduled GitHub Action at
+`.github/workflows/update-world-cup-data.yml`. During the tournament window, it
+runs every 7 minutes, but only calls API-Football when cached kickoff times show
+that a match is near or currently live. It can also be run manually from the
+GitHub Actions tab.
+
+Setup:
+
+1. Create a free API-Football account.
+2. In GitHub, add a repository secret named `API_FOOTBALL_KEY`.
+3. Run **Update World Cup Data** manually once with `refresh_schedule` checked
+   to verify the secret and cache kickoff times.
+
+The importer uses API-Football `league=1` and `season=2026`. It imports final
+scores, penalty winners, and selected-player goals when goal events are present
+in the fixture response. Awards remain manual. The importer has a hard cap of 95
+API calls per UTC day, tracked in `data/api-request-budget.json`; if the cap is
+hit, the site keeps serving the last good `data/live-state.json`.
+
+### Option B: Keep Using `data/state.json`
 
 1. Open the dashboard locally or on GitHub Pages.
 2. Unlock admin controls and enter score, award, or knockout updates.
@@ -52,7 +79,7 @@ can be loaded when they open the GitHub Pages site.
 If `data/state.json` cannot be loaded, the app falls back to the browser's saved
 local state. If neither source exists, it starts from an empty pool state.
 
-### Option B: Use a Published Google Sheet CSV
+### Option C: Use a Published Google Sheet CSV
 
 Edit `data/source-config.json` and set the first source URL to a published CSV:
 
@@ -92,9 +119,9 @@ Only the columns needed for a row type have to be filled in.
   `goldenGlove`, or `bestYoungPlayer`.
 
 If the published Sheet URL is blank or unavailable, the app automatically tries
-`data/state.json`.
+the default live JSON and bundled JSON fallbacks.
 
-### Option C: Use an Apps Script JSON URL
+### Option D: Use an Apps Script JSON URL
 
 If a Sheet needs multiple tabs or richer logic, publish an Apps Script web app
 that returns the same JSON shape as `data/state.json`, then configure it as:
