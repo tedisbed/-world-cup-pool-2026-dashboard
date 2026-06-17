@@ -58,21 +58,32 @@ jobs:
             node scripts/fetch-api-football.mjs
           fi
 
+      - name: Fetch Kalshi odds data
+        id: fetch_kalshi
+        if: steps.window.outputs.run_import == 'true'
+        continue-on-error: true
+        shell: bash
+        run: node scripts/fetch-kalshi-odds.mjs
+
       - name: Commit live state changes
         if: steps.window.outputs.run_import == 'true'
         shell: bash
         run: |
-          if git diff --quiet -- data/live-state.json data/api-fixture-times.json data/api-request-budget.json; then
+          if git diff --quiet -- data/live-state.json data/api-fixture-times.json data/api-request-budget.json data/kalshi-odds.json; then
             echo "No live state changes to commit."
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add data/live-state.json data/api-fixture-times.json data/api-request-budget.json
+            git add data/live-state.json data/api-fixture-times.json data/api-request-budget.json data/kalshi-odds.json
             git commit -m "Update World Cup live data"
             git push
           fi
 
           if [[ "${{ steps.fetch.outcome }}" == "failure" ]]; then
             echo "API-Football fetch failed after reserving budget."
+            exit 1
+          fi
+          if [[ "${{ steps.fetch_kalshi.outcome }}" == "failure" ]]; then
+            echo "Kalshi odds fetch failed."
             exit 1
           fi
