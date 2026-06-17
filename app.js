@@ -32,6 +32,7 @@ import {
   teams,
 } from "./pool-core.mjs";
 import { loadInitialState } from "./app-state.mjs";
+import { getKalshiEventTicker, summarizeWinnerMarkets } from "./kalshi-odds.mjs";
 
 const adminStorageKey = "world-cup-pool-dashboard-admin-unlocked";
 const adminPassword = "Noah";
@@ -51,6 +52,12 @@ let state = createEmptyState();
 let adminUnlocked = sessionStorage.getItem(adminStorageKey) === "true";
 let selectedMatchId = fixtures[0].id;
 let activeTab = "today";
+const kalshiApiBase = "https://external-api.kalshi.com/trade-api/v2";
+const kalshiCacheMs = 5 * 60 * 1000;
+const kalshiLookaheadDays = 7;
+const kalshiMaxRequestsPerRender = 8;
+const kalshiOddsCache = new Map();
+const kalshiOddsRequests = new Set();
 const filters = {
   search: "",
   owner: "all",
@@ -233,6 +240,7 @@ function renderToday(result) {
   const matches = getMatchesForDate(state, today);
   const completed = matches.filter(isCompletedMatch).length;
   const totalSwing = matches.reduce((sum, match) => sum + todayOpportunityLines(match).length, 0);
+  requestKalshiOddsForMatches(matches);
 
   dom.todayPanel.innerHTML = `
     <div class="today-layout">
@@ -340,6 +348,7 @@ function renderSpotlight() {
 
 function renderMatches() {
   const matches = filterMatches(getAllMatches(state));
+  requestKalshiOddsForMatches(matches);
 
   dom.matchList.innerHTML = matches.length
     ? matches.map(matchCard).join("")
@@ -802,6 +811,7 @@ function matchCard(match) {
           <span class="badge">${escapeHtml(match.venue || "TBD")}</span>
           <span class="status-badge">${isCompletedMatch(match) ? `Final${winner ? `: ${escapeHtml(winner)}` : ""}` : "Open"}</span>
         </div>
+        ${kalshiOddsBlock(match)}
       </div>
       <div class="match-summary">
         <div class="readonly-score">${scoreValue(match.homeScore) || "-"}<span>:</span>${scoreValue(match.awayScore) || "-"}</div>
@@ -831,6 +841,7 @@ function todayMatchCard(match, result) {
             ${match.group ? `<span class="badge">Group ${escapeHtml(match.group)}</span>` : ""}
             <span class="status-badge">${isCompletedMatch(match) ? `Final${winner ? `: ${escapeHtml(winner)}` : ""}` : "Open"}</span>
           </div>
+          ${kalshiOddsBlock(match)}
         </div>
         <div class="readonly-score">${scoreValue(match.homeScore) || "-"}<span>:</span>${scoreValue(match.awayScore) || "-"}</div>
       </div>
@@ -876,6 +887,83 @@ function todayOpportunityLines(match) {
   const impact = getMatchImpact(match, state);
   const playerGoalLines = selectedPlayersForMatch(match).map((player) => `${player.name} goal: ${player.owner} +2`);
   return [...impact.possible, ...playerGoalLines];
+}
+
+function kalshiOddsBlock(match) {
+  if (isCompletedMatch(match)) return "";
+  const ticker = getKalshiEventTicker(match);
+  const cached = ticker ? kalshiOddsCache.get(ticker) : null;
+  const summary = cached && cached.expiresAt > Date.now() ? cached.summary : null;
+  if (!summary) return "";
+
+  const secondary = [
+    summary.drawProbability === null ? "" : `Draw ${summary.drawProbability}%`,
+    summary.underdogLabel && summary.underdogProbability !== null ? `${summary.underdogLabel} ${summary.underdogProbability}%` : "",
+  ].filter(Boolean);
+
+  return `
+    <div class="kalshi-odds">
+      <span>Market favorite</span>
+      <strong>${escapeHtml(summary.favoriteLabel)} ${summary.favoriteProbability}%</strong>
+      ${secondary.length ? `<em>${secondary.map(escapeHtml).join(" + ")}</em>` : ""}
+      ${summary.marketsUrl ? `<a href="${escapeHtml(summary.marketsUrl)}" target="_blank" rel="noopener">Kalshi</a>` : ""}
+    </div>
+  `;
+}
+
+function requestKalshiOddsForMatches(matches) {
+  if (typeof fetch !== "function") return;
+  const now = Date.now();
+  const tickers = [
+    ...new Set(
+      matches
+        .filter(shouldRequestKalshiOdds)
+        .map(getKalshiEventTicker)
+        .filter(Boolean),
+    ),
+  ]
+    .filter((ticker) => {
+      const cached = kalshiOddsCache.get(ticker);
+      return !cached || cached.expiresAt <= now;
+    })
+    .slice(0, kalshiMaxRequestsPerRender);
+
+  for (const ticker of tickers) {
+    if (kalshiOddsRequests.has(ticker)) continue;
+    kalshiOddsRequests.add(ticker);
+    fetchKalshiWinnerOdds(ticker)
+      .then((summary) => {
+        kalshiOddsCache.set(ticker, { summary, expiresAt: Date.now() + kalshiCacheMs });
+        renderActiveTab();
+      })
+      .catch(() => {
+        kalshiOddsCache.set(ticker, { summary: null, expiresAt: Date.now() + kalshiCacheMs });
+      })
+      .finally(() => {
+        kalshiOddsRequests.delete(ticker);
+      });
+  }
+}
+
+async function fetchKalshiWinnerOdds(ticker) {
+  const response = await fetch(`${kalshiApiBase}/markets?event_ticker=${encodeURIComponent(ticker)}&status=open`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Unable to load Kalshi markets: ${response.status}`);
+  const data = await response.json();
+  const fixture = getAllMatches(state).find((match) => getKalshiEventTicker(match) === ticker);
+  return fixture ? summarizeWinnerMarkets(fixture, data.markets ?? []) : null;
+}
+
+function shouldRequestKalshiOdds(match) {
+  if (isCompletedMatch(match) || !getKalshiEventTicker(match)) return false;
+  const today = todayIso();
+  return match.date >= today && match.date <= addDaysIso(today, kalshiLookaheadDays);
+}
+
+function addDaysIso(date, days) {
+  const parsed = new Date(`${date}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return date;
+  parsed.setUTCDate(parsed.getUTCDate() + days);
+  return parsed.toISOString().slice(0, 10);
 }
 
 function pointEventItem(event) {
