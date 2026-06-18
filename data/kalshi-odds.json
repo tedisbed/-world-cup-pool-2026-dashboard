@@ -1,12 +1,12 @@
 {
-  "updatedAt": "2026-06-18T00:25:27.787Z",
+  "updatedAt": "2026-06-18T04:54:54.131Z",
   "matches": {
     "g-a-03": {
       "favoriteLabel": "Czechia",
-      "favoriteProbability": 54,
+      "favoriteProbability": 53,
       "drawProbability": 26,
       "underdogLabel": "South Africa",
-      "underdogProbability": 21,
+      "underdogProbability": 22,
       "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun18czersa"
     },
     "g-b-03": {
@@ -33,21 +33,13 @@
       "underdogProbability": 24,
       "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun18mexkor"
     },
-    "g-h-04": {
-      "favoriteLabel": "Spain",
-      "favoriteProbability": 89,
-      "drawProbability": 9,
-      "underdogLabel": "Saudi Arabia",
-      "underdogProbability": 5,
-      "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun21espksa"
-    },
-    "g-a-05": {
-      "favoriteLabel": "Mexico",
-      "favoriteProbability": 55,
-      "drawProbability": 26,
-      "underdogLabel": "Czechia",
-      "underdogProbability": 20,
-      "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun24czemex"
+    "g-i-03": {
+      "favoriteLabel": "Norway",
+      "favoriteProbability": 42,
+      "drawProbability": 27,
+      "underdogLabel": "Senegal",
+      "underdogProbability": 32,
+      "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun22norsen"
     }
   }
 }
