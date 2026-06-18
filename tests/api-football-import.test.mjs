@@ -8,6 +8,7 @@ import {
   apiFootballFixturesToState,
   buildFixtureTimeCache,
   canUseApiRequest,
+  getApiFootballFixtureDiagnostics,
   normalizeApiFootballTeamName,
   shouldPollApiFootball,
   writeLiveStateFromApi,
@@ -225,4 +226,48 @@ test("live state writer merges API updates into existing backfilled history", as
   assert.deepEqual(merged.matchPlayerGoals["g-c-02"], { Mbappe: 1, Vinicius: 1 });
   assert.equal(merged.playerGoals.Mbappe, 2);
   assert.equal(merged.awards.goldenBoot, "Mbappe");
+});
+
+test("fixture diagnostics report matched and unmatched API-Football fixtures", () => {
+  const diagnostics = getApiFootballFixtureDiagnostics([
+    {
+      fixture: { id: 1001, date: "2026-06-13T22:00:00+00:00", status: { short: "FT" } },
+      teams: { home: { name: "Brazil" }, away: { name: "Morocco" } },
+    },
+    {
+      fixture: { id: 1002, date: "2026-06-13T22:00:00+00:00", status: { short: "FT" } },
+      teams: { home: { name: "Italy" }, away: { name: "Morocco" } },
+    },
+  ]);
+
+  assert.equal(diagnostics.received, 2);
+  assert.equal(diagnostics.matched, 1);
+  assert.equal(diagnostics.unmatched, 1);
+  assert.deepEqual(diagnostics.unmatchedSamples, ["2026-06-13 Italy vs Morocco"]);
+});
+
+test("refresh schedule fails loudly when API-Football returns no usable fixtures", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "api-football-import-"));
+  const fixtureTimesPath = join(dir, "api-fixture-times.json");
+  const budgetPath = join(dir, "api-request-budget.json");
+  const outputPath = join(dir, "live-state.json");
+
+  await writeFile(fixtureTimesPath, JSON.stringify({ fixtures: [] }));
+  await writeFile(budgetPath, JSON.stringify({ date: "2026-06-18", count: 0 }));
+
+  await assert.rejects(
+    writeLiveStateFromApi({
+      fixtureTimesPath,
+      budgetPath,
+      outputPath,
+      mode: "refresh-schedule",
+      now: new Date("2026-06-18T08:00:00.000Z"),
+      apiKey: "test-key",
+      fetchFn: async () => ({
+        ok: true,
+        json: async () => ({ response: [] }),
+      }),
+    }),
+    /API-Football returned 0 fixtures/,
+  );
 });

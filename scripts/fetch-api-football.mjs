@@ -134,6 +134,50 @@ export function buildFixtureTimeCache(apiFixtures) {
   };
 }
 
+export function getApiFootballFixtureDiagnostics(apiFixtures) {
+  const fixtureIndexes = buildFixtureIndexes();
+  const diagnostics = {
+    received: Array.isArray(apiFixtures) ? apiFixtures.length : 0,
+    matched: 0,
+    unmatched: 0,
+    completed: 0,
+    unmatchedSamples: [],
+  };
+
+  for (const apiFixture of apiFixtures ?? []) {
+    if (isCompletedApiFixture(apiFixture)) diagnostics.completed += 1;
+    if (findDashboardFixture(apiFixture, fixtureIndexes)) {
+      diagnostics.matched += 1;
+      continue;
+    }
+
+    diagnostics.unmatched += 1;
+    if (diagnostics.unmatchedSamples.length < 8) {
+      diagnostics.unmatchedSamples.push(apiFixtureLabel(apiFixture));
+    }
+  }
+
+  return diagnostics;
+}
+
+export function assertUsableApiFootballFixtures(apiFixtures) {
+  const diagnostics = getApiFootballFixtureDiagnostics(apiFixtures);
+  if (diagnostics.received === 0) {
+    throw new Error(`API-Football returned 0 fixtures for league=${API_FOOTBALL_LEAGUE} season=${API_FOOTBALL_SEASON}`);
+  }
+  if (diagnostics.matched === 0) {
+    throw new Error(
+      [
+        `API-Football returned ${diagnostics.received} fixtures but 0 matched dashboard fixtures for league=${API_FOOTBALL_LEAGUE} season=${API_FOOTBALL_SEASON}.`,
+        diagnostics.unmatchedSamples.length ? `Unmatched samples: ${diagnostics.unmatchedSamples.join("; ")}` : "",
+      ]
+        .filter(Boolean)
+        .join(" "),
+    );
+  }
+  return diagnostics;
+}
+
 export function shouldPollApiFootball(fixtureTimeCache, now = new Date()) {
   const nowMs = now.getTime();
   if (!Number.isFinite(nowMs)) return false;
@@ -171,6 +215,10 @@ export async function fetchApiFootballFixtures({ apiKey = process.env.API_FOOTBA
   }
 
   const payload = await response.json();
+  const errors = apiFootballErrors(payload?.errors);
+  if (errors) {
+    throw new Error(`API-Football response errors: ${errors}`);
+  }
   if (!Array.isArray(payload?.response)) {
     throw new Error("API-Football response did not include a response array");
   }
@@ -200,9 +248,17 @@ export async function writeLiveStateFromApi({
   await writeJsonFile(budgetPath, budgetCheck.budget);
 
   const apiFixtures = await fetchApiFootballFixtures({ apiKey, fetchFn });
+  const diagnostics = assertUsableApiFootballFixtures(apiFixtures);
+  console.log(
+    `API-Football fixtures received=${diagnostics.received} matched=${diagnostics.matched} unmatched=${diagnostics.unmatched} completed=${diagnostics.completed}`,
+  );
   const apiState = apiFootballFixturesToState(apiFixtures);
   const state = mergeApiStateIntoLiveState(await readJsonFile(outputPath, createEmptyState()), apiState);
-  await writeJsonFile(fixtureTimesPath, buildFixtureTimeCache(apiFixtures));
+  const fixtureTimeCache = buildFixtureTimeCache(apiFixtures);
+  if (!fixtureTimeCache.fixtures.length) {
+    throw new Error(`API-Football returned ${diagnostics.matched} matched fixtures but none had usable kickoff times`);
+  }
+  await writeJsonFile(fixtureTimesPath, fixtureTimeCache);
   const nextJson = `${JSON.stringify(state, null, 2)}\n`;
 
   try {
@@ -236,6 +292,25 @@ function findDashboardFixture(apiFixture, indexes) {
   const date = String(apiFixture?.fixture?.date ?? "").slice(0, 10);
 
   return indexes.byDateAndTeams.get(`${date}:${teamsKey}`) ?? uniqueFixture(indexes.byTeams.get(teamsKey));
+}
+
+function apiFixtureLabel(apiFixture) {
+  const date = String(apiFixture?.fixture?.date ?? "").slice(0, 10) || "unknown date";
+  const home = normalizeApiFootballTeamName(apiFixture?.teams?.home?.name) || "unknown home";
+  const away = normalizeApiFootballTeamName(apiFixture?.teams?.away?.name) || "unknown away";
+  return `${date} ${home} vs ${away}`;
+}
+
+function apiFootballErrors(errors) {
+  if (!errors) return "";
+  if (Array.isArray(errors)) return errors.filter(Boolean).join("; ");
+  if (typeof errors === "string") return errors;
+  if (typeof errors === "object") {
+    return Object.entries(errors)
+      .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(", ") : value}`)
+      .join("; ");
+  }
+  return String(errors);
 }
 
 async function readJsonFile(path, fallback) {
