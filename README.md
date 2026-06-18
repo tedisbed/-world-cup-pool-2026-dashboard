@@ -24,53 +24,29 @@ http://localhost:8765
 - Lets you add knockout match rows once the bracket is known.
 - Tracks selected-player goals and award winners.
 - Exports JSON snapshots, detailed score CSV, and match CSV.
-- Loads the shared published scoreboard from `data/live-state.json`.
-- Refreshes World Cup scores from API-Football through a scheduled GitHub
-  Action.
+- Loads the shared scoreboard from a published Google Sheet CSV.
 
 ## Publish Score Updates on GitHub Pages
 
-The hosted app has one public data source:
+The hosted app has one public match-data source:
 
-1. The generated `data/live-state.json` file.
-2. An empty state if the live file cannot be loaded.
+1. The published Google Sheet CSV configured as `googleSheetCsvPath` in
+   `app-state.mjs`.
+2. An empty state if the Sheet cannot be loaded.
 
-### Auto-Refresh API-Football Data
+### Google Sheet Source
 
-The repo includes a scheduled GitHub Action at
-`.github/workflows/update-world-cup-data.yml`. During the tournament window, it
-runs every 7 minutes, but only calls API-Football when cached kickoff times show
-that a match is near or currently live. It can also be run manually from the
-GitHub Actions tab.
+The site reads this published CSV whenever it opens:
 
-Setup:
-
-1. Create a free API-Football account.
-2. In GitHub, add a repository secret named `API_FOOTBALL_KEY`.
-3. Run **Update World Cup Data** manually once with `refresh_schedule` checked
-   to verify the secret and cache kickoff times.
-
-The importer uses API-Football `league=1` and `season=2026`. It imports final
-scores, penalty winners, and selected-player goals when goal events are present
-in the fixture response. Awards remain manual. The importer has a hard cap of 95
-API calls per UTC day, tracked in `data/api-request-budget.json`; if the cap is
-hit, the site keeps serving the last good `data/live-state.json`.
-
-### One-Time Google Sheet Backfill
-
-If historical match rows still live in the old Google Sheet, migrate them once:
-
-```bash
-node scripts/backfill-from-google-sheet.mjs
+```text
+https://docs.google.com/spreadsheets/d/e/2PACX-1vTDvAZcUzudMTWYH5kfzoByxqte0FfSSQBhDen2stoBA2qyqbIRveAzwmp903gBmw/pub?gid=1553990171&single=true&output=csv
 ```
 
-The script reads the old published Sheet CSV, merges it into
-`data/live-state.json`, and preserves API-owned values when both sources have a
-result. You can also pass a local CSV:
+To update scores or pool inputs, edit the Google Sheet and make sure that tab is
+published to the web as CSV. See `docs/google-sheet-template.md` for the row
+format.
 
-```bash
-node scripts/backfill-from-google-sheet.mjs --csv path/to/export.csv
-```
+### Sheet Columns
 
 Sheet columns:
 

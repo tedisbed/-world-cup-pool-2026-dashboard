@@ -2,35 +2,40 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createEmptyState } from "../pool-core.mjs";
-import { livePublishedStatePath, loadInitialState, loadPublishedState, parseStateCsv } from "../app-state.mjs";
+import { googleSheetCsvPath, loadInitialState, loadPublishedState, parseStateCsv } from "../app-state.mjs";
 
-test("initial state loads only the live API-generated state", async () => {
-  const publishedState = createEmptyState();
-  publishedState.matches["g-a-01"] = { homeScore: 2, awayScore: 0, status: "final" };
+test("initial state loads the published Google Sheet CSV", async () => {
+  const csv = [
+    "type,id,homeScore,awayScore,status",
+    "match,g-a-01,2,0,final",
+  ].join("\n");
   const requestedPaths = [];
 
   const result = await loadInitialState({
-    fetchJson: async (path) => {
+    fetchText: async (path) => {
       requestedPaths.push(path);
-      return publishedState;
+      return csv;
     },
   });
 
-  assert.deepEqual(requestedPaths, [livePublishedStatePath]);
+  assert.deepEqual(requestedPaths, [googleSheetCsvPath]);
   assert.equal(result.matches["g-a-01"].homeScore, 2);
 });
 
-test("published state loads the live API-generated state", async () => {
+test("published state loads the Google Sheet CSV", async () => {
   const result = await loadPublishedState({
-    fetchJson: async () => ({ ...createEmptyState(), matches: { "g-a-02": { homeScore: 3, awayScore: 2, status: "final" } } }),
+    fetchText: async () => [
+      "type,id,homeScore,awayScore,status",
+      "match,g-a-02,3,2,final",
+    ].join("\n"),
   });
 
   assert.equal(result.matches["g-a-02"].homeScore, 3);
 });
 
-test("initial state falls back to empty state when live API data is unavailable", async () => {
+test("initial state falls back to empty state when the Google Sheet is unavailable", async () => {
   const result = await loadPublishedState({
-    fetchJson: async () => {
+    fetchText: async () => {
       throw new Error("not found");
     },
   });
@@ -38,7 +43,7 @@ test("initial state falls back to empty state when live API data is unavailable"
   assert.deepEqual(result, createEmptyState());
 });
 
-test("Google Sheet CSV parser remains available for one-time backfills", () => {
+test("Google Sheet CSV parser loads score rows", () => {
   const csv = [
     "type,id,homeScore,awayScore,status",
     "match,g-a-01,2,1,final",

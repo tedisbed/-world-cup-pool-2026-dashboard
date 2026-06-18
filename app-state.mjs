@@ -1,29 +1,30 @@
 import { createEmptyState, normalizeState } from "./pool-core.mjs";
 
-export const livePublishedStatePath = "./data/live-state.json";
+export const googleSheetCsvPath =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vTDvAZcUzudMTWYH5kfzoByxqte0FfSSQBhDen2stoBA2qyqbIRveAzwmp903gBmw/pub?gid=1553990171&single=true&output=csv";
 
 export async function loadInitialState({
-  fetchJson = fetchLiveState,
+  fetchText = fetchGoogleSheetCsv,
 } = {}) {
-  return loadPublishedState({ fetchJson });
+  return loadPublishedState({ fetchText });
 }
 
 export async function loadPublishedState({
-  fetchJson = fetchLiveState,
+  fetchText = fetchGoogleSheetCsv,
 } = {}) {
   try {
-    return normalizeState(await fetchJson(livePublishedStatePath));
+    return normalizeState(parseStateCsv(await fetchText(googleSheetCsvPath)));
   } catch {
     return createEmptyState();
   }
 }
 
-async function fetchLiveState(path = livePublishedStatePath) {
+async function fetchGoogleSheetCsv(path = googleSheetCsvPath) {
   const response = await fetch(path, { cache: "no-store" });
   if (!response.ok) {
-    throw new Error(`Unable to load live state from ${path}: ${response.status}`);
+    throw new Error(`Unable to load Google Sheet CSV from ${path}: ${response.status}`);
   }
-  return response.json();
+  return response.text();
 }
 
 export function parseStateCsv(csv) {
