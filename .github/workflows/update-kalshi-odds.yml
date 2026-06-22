@@ -1,0 +1,57 @@
+name: Update Kalshi Odds
+
+on:
+  schedule:
+    - cron: "5 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kalshi-odds-feed
+  cancel-in-progress: false
+
+jobs:
+  update-kalshi-odds:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check tournament window
+        id: window
+        shell: bash
+        run: |
+          today="$(date -u +%Y-%m-%d)"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" || ( "$today" > "2026-06-10" && "$today" < "2026-07-20" ) ]]; then
+            echo "run_import=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_import=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out repository
+        if: steps.window.outputs.run_import == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        if: steps.window.outputs.run_import == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Fetch Kalshi odds data
+        if: steps.window.outputs.run_import == 'true'
+        shell: bash
+        run: node scripts/fetch-kalshi-odds.mjs
+
+      - name: Commit Kalshi odds changes
+        if: steps.window.outputs.run_import == 'true'
+        shell: bash
+        run: |
+          if git diff --quiet -- data/kalshi-odds.json; then
+            echo "No Kalshi odds changes to commit."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add data/kalshi-odds.json
+            git commit -m "Update Kalshi odds"
+            git push
+          fi
