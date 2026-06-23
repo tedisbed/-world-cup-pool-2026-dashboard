@@ -516,6 +516,7 @@ export function getMatchesForDate(state = createEmptyState(), date = "") {
 export function getKnockoutBracket(state = createEmptyState()) {
   const normalized = normalizeState(state);
   const standings = getGroupStandings(normalized);
+  const advancementStatuses = getGroupAdvancementStatuses(normalized);
   const matchWinners = getBracketMatchWinners(normalized);
 
   return {
@@ -525,7 +526,7 @@ export function getKnockoutBracket(state = createEmptyState()) {
         id: match.id,
         stage: round.stage,
         title: `Match ${match.id.slice(1)}`,
-        slots: match.slots.map((slot) => resolveBracketSlot(slot, standings, matchWinners)),
+        slots: match.slots.map((slot) => resolveBracketSlot(slot, standings, matchWinners, advancementStatuses)),
       })),
     })),
   };
@@ -682,6 +683,78 @@ export function getProjectedGroupBubbleTable(state = createEmptyState()) {
     }));
 
   return [...thirdPlaceRows, ...fourthPlaceRows];
+}
+
+export function getGroupAdvancementStatuses(state = createEmptyState()) {
+  const standings = getGroupStandings(state);
+  const qualified = getQualifiedTeams(state);
+  const allGroupsComplete = areAllGroupsComplete(state);
+  const projectedThirdPlaceTeams = new Set(getProjectedThirdPlaceTable(state).slice(0, 8).map((row) => row.team));
+  const statuses = {};
+
+  for (const group of groups) {
+    const groupRows = standings[group] ?? [];
+    const groupComplete = isGroupComplete(state, group);
+
+    for (const row of groupRows) {
+      statuses[row.team] = groupAdvancementStatus(row, groupRows, {
+        allGroupsComplete,
+        groupComplete,
+        projectedThirdPlaceTeams,
+        qualified,
+      });
+    }
+  }
+
+  return statuses;
+}
+
+function groupAdvancementStatus(row, groupRows, { allGroupsComplete, groupComplete, projectedThirdPlaceTeams, qualified }) {
+  if (qualified.has(row.team)) {
+    return { label: row.rank === 3 ? "CONF 3RD" : "CONFIRMED", tone: "confirmed", confirmed: true, eliminated: false, projected: true };
+  }
+
+  if (groupComplete) {
+    if (row.rank === 3 && !allGroupsComplete) {
+      return { label: "3RD BUBBLE", tone: "bubble", confirmed: false, eliminated: false, projected: true };
+    }
+    return { label: row.rank === 3 ? "CONF OUT 3RD" : "CONF OUT", tone: "out", confirmed: true, eliminated: true, projected: false };
+  }
+
+  if (isConfirmedTopTwo(row, groupRows)) {
+    return { label: "CONFIRMED", tone: "confirmed", confirmed: true, eliminated: false, projected: true };
+  }
+
+  if (isConfirmedOutOfTopThree(row, groupRows)) {
+    return { label: "CONF OUT", tone: "out", confirmed: true, eliminated: true, projected: false };
+  }
+
+  if (row.rank <= 2) {
+    return { label: "PROJECTED", tone: "advancing", confirmed: false, eliminated: false, projected: true };
+  }
+
+  if (row.rank === 3) {
+    return projectedThirdPlaceTeams.has(row.team)
+      ? { label: "PROJ 3RD", tone: "bubble", confirmed: false, eliminated: false, projected: true }
+      : { label: "PROJ OUT 3RD", tone: "out", confirmed: false, eliminated: false, projected: false };
+  }
+
+  return { label: "PROJ OUT", tone: "out", confirmed: false, eliminated: false, projected: false };
+}
+
+function isConfirmedTopTwo(row, groupRows) {
+  const teamsThatCanCatch = groupRows.filter((other) => other.team !== row.team && maxGroupPoints(other) >= row.points);
+  return teamsThatCanCatch.length <= 1;
+}
+
+function isConfirmedOutOfTopThree(row, groupRows) {
+  const rowMax = maxGroupPoints(row);
+  const teamsAlreadyBeyondReach = groupRows.filter((other) => other.team !== row.team && other.points > rowMax);
+  return teamsAlreadyBeyondReach.length >= 3;
+}
+
+function maxGroupPoints(row) {
+  return row.points + Math.max(0, 3 - row.played) * 3;
 }
 
 export function calculateScores(inputState = createEmptyState()) {
@@ -980,19 +1053,20 @@ export function getTeamProgress(state = createEmptyState()) {
 
   const allGroupsComplete = areAllGroupsComplete(state);
   const qualified = getQualifiedTeams(state);
+  const advancementStatuses = getGroupAdvancementStatuses(state);
   const standings = getGroupStandings(state);
 
   for (const group of groups) {
-    if (!isGroupComplete(state, group)) continue;
     for (const record of standings[group]) {
-      if (qualified.has(record.team) || (!allGroupsComplete && record.rank === 3)) {
-        progress[record.team].rank = 1;
-        progress[record.team].alive = true;
-        progress[record.team].label = record.rank === 3 ? "Third-place bubble" : "Advanced";
-      } else {
+      const advancementStatus = advancementStatuses[record.team];
+      if (advancementStatus?.eliminated) {
         progress[record.team].rank = 0;
         progress[record.team].alive = false;
-        progress[record.team].label = "Group exit";
+        progress[record.team].label = "Group exit confirmed";
+      } else if (qualified.has(record.team) || advancementStatus?.confirmed || (!allGroupsComplete && record.rank === 3)) {
+        progress[record.team].rank = 1;
+        progress[record.team].alive = true;
+        progress[record.team].label = advancementStatus?.confirmed ? "Qualified confirmed" : record.rank === 3 ? "Third-place bubble" : "Advanced";
       }
     }
   }
@@ -1344,7 +1418,7 @@ function bracketMatchKey(match) {
   return number ? `m${number}` : "";
 }
 
-function resolveBracketSlot(slot, standings, matchWinners) {
+function resolveBracketSlot(slot, standings, matchWinners, advancementStatuses = {}) {
   if (slot.type === "group") {
     const label = `Group ${slot.group} ${slot.rank === 1 ? "winner" : "runner-up"}`;
     const record = standings[slot.group]?.[slot.rank - 1];
@@ -1352,6 +1426,7 @@ function resolveBracketSlot(slot, standings, matchWinners) {
       label,
       team: record?.played > 0 ? record.team : "",
       owner: record?.played > 0 ? getOwnerForTeam(record.team) : "",
+      advancementStatus: record?.played > 0 ? advancementStatuses[record.team] ?? null : null,
     };
   }
 
@@ -1365,6 +1440,7 @@ function resolveBracketSlot(slot, standings, matchWinners) {
       label,
       team: record?.team ?? "",
       owner: record?.team ? getOwnerForTeam(record.team) : "",
+      advancementStatus: record?.team ? advancementStatuses[record.team] ?? null : null,
     };
   }
 
@@ -1375,10 +1451,11 @@ function resolveBracketSlot(slot, standings, matchWinners) {
       label,
       team,
       owner: team ? getOwnerForTeam(team) : "",
+      advancementStatus: team ? advancementStatuses[team] ?? null : null,
     };
   }
 
-  return { label: "", team: "", owner: "" };
+  return { label: "", team: "", owner: "", advancementStatus: null };
 }
 
 function numberOrZero(value) {

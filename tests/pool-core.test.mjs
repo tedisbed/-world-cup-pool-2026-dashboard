@@ -7,6 +7,7 @@ import {
   getMatchesByDate,
   getMatchesForDate,
   getGroupStandings,
+  getGroupAdvancementStatuses,
   getKnockoutBracket,
   getNationPointStandings,
   getOwnerOpportunityRows,
@@ -153,6 +154,47 @@ test("knockout bracket fills group source slots from current standings leaders",
 
   assert.equal(match86.slots[0].label, "Group J winner");
   assert.equal(match86.slots[0].team, "Argentina");
+});
+
+test("group advancement statuses distinguish confirmed and projected outcomes", () => {
+  const state = createEmptyState();
+  state.matches["g-a-01"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-a-02"] = { homeScore: 0, awayScore: 2, status: "final" };
+  state.matches["g-a-03"] = { homeScore: 3, awayScore: 0, status: "final" };
+  state.matches["g-a-04"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-a-06"] = { homeScore: 0, awayScore: 1, status: "final" };
+
+  const statuses = getGroupAdvancementStatuses(state);
+
+  assert.deepEqual(
+    {
+      Mexico: statuses.Mexico,
+      Czechia: statuses.Czechia,
+      "South Africa": statuses["South Africa"],
+    },
+    {
+      Mexico: { label: "CONFIRMED", tone: "confirmed", confirmed: true, eliminated: false, projected: true },
+      Czechia: { label: "CONFIRMED", tone: "confirmed", confirmed: true, eliminated: false, projected: true },
+      "South Africa": { label: "CONF OUT", tone: "out", confirmed: true, eliminated: true, projected: false },
+    },
+  );
+});
+
+test("knockout bracket slots include advancement status for projected teams", () => {
+  const state = createEmptyState();
+  state.matches["g-a-01"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-a-02"] = { homeScore: 0, awayScore: 2, status: "final" };
+  state.matches["g-a-03"] = { homeScore: 3, awayScore: 0, status: "final" };
+  state.matches["g-a-04"] = { homeScore: 2, awayScore: 0, status: "final" };
+
+  const bracket = getKnockoutBracket(state);
+  const match79 = bracket.rounds
+    .find((round) => round.stage === "r32")
+    .matches.find((match) => match.id === "m79");
+
+  assert.equal(match79.slots[0].label, "Group A winner");
+  assert.equal(match79.slots[0].team, "Czechia");
+  assert.equal(match79.slots[0].advancementStatus.label, "CONFIRMED");
 });
 
 test("projected third-place table includes every group before groups are complete", () => {

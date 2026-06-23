@@ -5,6 +5,7 @@ import {
   draftPicks,
   fixtures,
   getAllMatches,
+  getGroupAdvancementStatuses,
   getGroupStandings,
   getKnockoutBracket,
   getMatchImpact,
@@ -420,6 +421,7 @@ function renderGroups(result) {
   if (!groupsPanel) return;
   const standings = getGroupStandings(state);
   const qualified = getQualifiedTeams(state);
+  const advancementStatuses = getGroupAdvancementStatuses(state);
   const allGroupsComplete = areAllGroupsComplete(state);
   const thirdTable = allGroupsComplete ? getThirdPlaceTable(state) : getProjectedThirdPlaceTable(state);
   const bubbleTable = getProjectedGroupBubbleTable(state);
@@ -428,7 +430,7 @@ function renderGroups(result) {
   groupsPanel.innerHTML = `
     <div class="group-grid">
       ${Object.entries(standings)
-        .map(([group, rows]) => groupTable(group, rows, qualified, projectedThirdPlaceTeams, allGroupsComplete))
+        .map(([group, rows]) => groupTable(group, rows, qualified, projectedThirdPlaceTeams, allGroupsComplete, advancementStatuses))
         .join("")}
     </div>
     <section class="card" style="margin-top:12px">
@@ -441,6 +443,7 @@ function renderGroups(result) {
           ? standingsTable(bubbleTable.map((row) => ({ ...row, rank: row.groupRank })), qualified, "standings-table", {
               showThirdPlaceStatus: true,
               allGroupsComplete,
+              advancementStatuses,
             })
           : `<div class="empty-state">No completed groups yet.</div>`
       }
@@ -1003,7 +1006,7 @@ function playerGoalRow(player, playerGoalTotals) {
   `;
 }
 
-function groupTable(group, rows, qualified, projectedThirdPlaceTeams, allGroupsComplete) {
+function groupTable(group, rows, qualified, projectedThirdPlaceTeams, allGroupsComplete, advancementStatuses) {
   const complete = fixtures.filter((fixture) => fixture.group === group).every((fixture) => {
     const match = { ...fixture, ...(state.matches[fixture.id] ?? {}) };
     return isCompletedMatch(match);
@@ -1015,7 +1018,7 @@ function groupTable(group, rows, qualified, projectedThirdPlaceTeams, allGroupsC
         <span>Group ${group}</span>
         <small>${complete ? "Complete" : "Open"}</small>
       </div>
-      ${standingsTable(rows, qualified, "standings-table", { showAdvancement: true, allGroupsComplete, projectedThirdPlaceTeams })}
+      ${standingsTable(rows, qualified, "standings-table", { showAdvancement: true, allGroupsComplete, projectedThirdPlaceTeams, advancementStatuses })}
     </section>
   `;
 }
@@ -1033,9 +1036,9 @@ function standingsTable(rows, qualified, className = "", options = {}) {
           .map(
             (row) => {
               const advancement = options.showThirdPlaceStatus
-                ? thirdPlaceStatus(row, options.allGroupsComplete)
+                ? thirdPlaceStatus(row, options.allGroupsComplete, options.advancementStatuses)
                 : options.showAdvancement
-                  ? advancementStatus(row, qualified, options.allGroupsComplete, options.projectedThirdPlaceTeams)
+                  ? options.advancementStatuses?.[row.team] ?? advancementStatus(row, qualified, options.allGroupsComplete, options.projectedThirdPlaceTeams)
                   : null;
               return `
               <tr class="${advancement ? `advancement-${advancement.tone}` : qualified.has(row.team) ? "qualified-row" : ""}">
@@ -1079,7 +1082,9 @@ export function getAdvancementStatus(row, qualified, allGroupsComplete, projecte
   return { label: "OUT", tone: "out" };
 }
 
-function thirdPlaceStatus(row, allGroupsComplete) {
+function thirdPlaceStatus(row, allGroupsComplete, advancementStatuses = {}) {
+  const confirmedStatus = advancementStatuses[row.team];
+  if (confirmedStatus?.confirmed) return confirmedStatus;
   if (row.groupRank === 4 || row.rank === 4) {
     return { label: "OUT 4TH", tone: "out" };
   }
@@ -1112,10 +1117,12 @@ function bracketMatch(match) {
 
 function bracketSlot(slot) {
   const hasTeam = Boolean(slot.team);
+  const advancement = slot.advancementStatus;
   return `
-    <div class="bracket-slot ${hasTeam ? "filled" : ""}">
+    <div class="bracket-slot ${hasTeam ? "filled" : ""} ${advancement ? `advancement-${escapeHtml(advancement.tone)}` : ""}">
       <strong>${escapeHtml(slot.team || slot.label)}</strong>
       <span>${hasTeam ? escapeHtml(slot.label) : "Pending"}</span>
+      ${advancement ? `<span class="advance-badge ${escapeHtml(advancement.tone)}">${escapeHtml(advancement.label)}</span>` : ""}
       ${slot.owner ? `<span class="owner-chip" style="--owner-color:${ownerColor(slot.owner)}">${escapeHtml(slot.owner)}</span>` : ""}
     </div>
   `;
@@ -1145,10 +1152,11 @@ function nationRaceCard(row, { compact = false } = {}) {
 }
 
 function nationContenderRow(row, { compact = false } = {}) {
+  const badge = row.alive ? (row.label.includes("confirmed") ? "CONF" : "LIVE") : "ELIM";
   return `
     <div class="nation-contender-row ${compact ? "compact" : ""} ${row.alive ? "" : "eliminated"}">
       <div>
-        <strong>${escapeHtml(row.team)} <span class="survival-badge ${row.alive ? "live" : "eliminated"}">${row.alive ? "LIVE" : "ELIM"}</span></strong>
+        <strong>${escapeHtml(row.team)} <span class="survival-badge ${row.alive ? "live" : "eliminated"}">${escapeHtml(badge)}</span></strong>
         <span>${escapeHtml(row.label)} · ${escapeHtml(row.group)} · ${escapeHtml(row.federation)}</span>
       </div>
       <span class="owner-chip" style="--owner-color:${ownerColor(row.owner)}">${escapeHtml(row.owner)}</span>
