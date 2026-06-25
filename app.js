@@ -211,6 +211,7 @@ function renderActiveTab() {
 
 function renderLeaderboard(result) {
   const maxScore = Math.max(1, ...result.ownerTotals.map((row) => row.score));
+  const advancementStatuses = getGroupAdvancementStatuses(state);
   dom.leaderboard.innerHTML = result.ownerTotals
     .map((row, index) => {
       const picks = draftPicks.filter((pick) => pick.owner === row.owner);
@@ -223,7 +224,7 @@ function renderLeaderboard(result) {
             <div>
               <div class="owner-name">${escapeHtml(row.owner)}</div>
               <div class="owner-picks">
-                ${picks.map((pick) => pickBadge(pick)).join("")}
+                ${picks.map((pick) => pickBadge(pick, advancementStatuses)).join("")}
               </div>
               <div class="score-bar" style="width:${bar}%"></div>
             </div>
@@ -1175,9 +1176,28 @@ function draftPickCell(pick) {
   `;
 }
 
-function pickBadge(pick) {
+function pickBadge(pick, advancementStatuses = {}) {
   const label = pick.type === "player" ? `${pick.name}` : pick.name;
-  return `<span class="team-chip ${pick.type === "player" ? "player" : ""}">${escapeHtml(label)}</span>`;
+  if (pick.type === "player") {
+    return `<span class="team-chip player">${escapeHtml(label)}</span>`;
+  }
+
+  const advancement = advancementStatuses[pick.name];
+  const tone = advancement?.tone ?? "open";
+  const statusLabel = leaderboardPickStatusLabel(advancement);
+  return `
+    <span class="team-chip leaderboard-team-chip ${escapeHtml(tone)}" title="${escapeHtml(`${pick.name}: ${statusLabel}`)}">
+      <span>${escapeHtml(label)}</span>
+      <small>${escapeHtml(statusLabel)}</small>
+    </span>
+  `;
+}
+
+function leaderboardPickStatusLabel(advancement) {
+  if (!advancement) return "Open";
+  if (advancement.eliminated) return advancement.confirmed ? "Out" : "Proj out";
+  if (advancement.tone === "bubble") return advancement.confirmed ? "Bubble" : "3rd bubble";
+  return advancement.confirmed ? "In" : "Proj in";
 }
 
 function detailItem(detail, owner = "") {

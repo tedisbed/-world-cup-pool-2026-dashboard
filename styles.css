@@ -232,6 +232,77 @@ h1 {
   margin-top: 5px;
 }
 
+.owner-picks .team-chip {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.leaderboard-team-chip {
+  gap: 5px;
+  border-color: #d1d9e5;
+  background: #f8fafc;
+  color: var(--ink);
+}
+
+.leaderboard-team-chip > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.leaderboard-team-chip small {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 1px 5px;
+  font-size: 9px;
+  font-weight: 950;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.leaderboard-team-chip.confirmed {
+  border-color: #70c38d;
+  background: linear-gradient(180deg, #e4f8eb 0%, #f6fdf8 100%);
+  color: #0f5f2a;
+}
+
+.leaderboard-team-chip.confirmed small {
+  background: #16833a;
+  color: #fff;
+}
+
+.leaderboard-team-chip.advancing {
+  border-color: #a7d9b5;
+  background: linear-gradient(180deg, #edf9f0 0%, #ffffff 100%);
+  color: #166529;
+}
+
+.leaderboard-team-chip.advancing small {
+  background: #dff5e7;
+  color: #166529;
+}
+
+.leaderboard-team-chip.bubble {
+  border-color: #f1d28a;
+  background: linear-gradient(180deg, #fff5d7 0%, #fffdf7 100%);
+  color: #755307;
+}
+
+.leaderboard-team-chip.bubble small {
+  background: #f2c94c;
+  color: #4f3700;
+}
+
+.leaderboard-team-chip.out {
+  border-color: #f0b8b1;
+  background: linear-gradient(180deg, #fff0ee 0%, #fffafa 100%);
+  color: #9d2d25;
+}
+
+.leaderboard-team-chip.out small {
+  background: #c2413b;
+  color: #fff;
+}
+
 .score-bar {
   height: 4px;
   max-width: 100%;
