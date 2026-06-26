@@ -1,61 +1,69 @@
 {
-  "updatedAt": "2026-06-25T04:19:27.581Z",
+  "updatedAt": "2026-06-26T04:35:38.173Z",
   "matches": {
-    "g-e-05": {
-      "favoriteLabel": "Ivory Coast",
-      "favoriteProbability": 84,
-      "drawProbability": 11,
-      "underdogLabel": "Curacao",
-      "underdogProbability": 6,
-      "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun25cuwciv"
-    },
-    "g-e-06": {
-      "favoriteLabel": "Germany",
-      "favoriteProbability": 67,
-      "drawProbability": 18,
-      "underdogLabel": "Ecuador",
-      "underdogProbability": 17,
-      "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun25ecuger"
-    },
-    "g-f-05": {
-      "favoriteLabel": "Japan",
-      "favoriteProbability": 54,
-      "drawProbability": 27,
-      "underdogLabel": "Sweden",
-      "underdogProbability": 22,
-      "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun25jpnswe"
-    },
-    "g-f-06": {
-      "favoriteLabel": "Netherlands",
-      "favoriteProbability": 89,
-      "drawProbability": 9,
-      "underdogLabel": "Tunisia",
-      "underdogProbability": 4,
-      "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun25tunned"
-    },
-    "g-d-05": {
-      "favoriteLabel": "USA",
-      "favoriteProbability": 53,
-      "drawProbability": 23,
-      "underdogLabel": "Turkiye",
-      "underdogProbability": 27,
-      "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun25turusa"
-    },
     "g-i-05": {
       "favoriteLabel": "France",
-      "favoriteProbability": 60,
-      "drawProbability": 22,
+      "favoriteProbability": 62,
+      "drawProbability": 20,
       "underdogLabel": "Norway",
-      "underdogProbability": 20,
+      "underdogProbability": 19,
       "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun26norfra"
+    },
+    "g-i-06": {
+      "favoriteLabel": "Senegal",
+      "favoriteProbability": 79,
+      "drawProbability": 14,
+      "underdogLabel": "Iraq",
+      "underdogProbability": 8,
+      "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun26senirq"
+    },
+    "g-g-05": {
+      "favoriteLabel": "Egypt",
+      "favoriteProbability": 40,
+      "drawProbability": 37,
+      "underdogLabel": "IR Iran",
+      "underdogProbability": 25,
+      "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun26egyiri"
+    },
+    "g-g-06": {
+      "favoriteLabel": "Belgium",
+      "favoriteProbability": 84,
+      "drawProbability": 12,
+      "underdogLabel": "New Zealand",
+      "underdogProbability": 6,
+      "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun26nzlbel"
     },
     "g-h-05": {
       "favoriteLabel": "Cape Verde",
-      "favoriteProbability": 40,
-      "drawProbability": 28,
+      "favoriteProbability": 37,
+      "drawProbability": 29,
       "underdogLabel": "Saudi Arabia",
-      "underdogProbability": 33,
+      "underdogProbability": 36,
       "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun26cpvksa"
+    },
+    "g-h-06": {
+      "favoriteLabel": "Spain",
+      "favoriteProbability": 66,
+      "drawProbability": 23,
+      "underdogLabel": "Uruguay",
+      "underdogProbability": 12,
+      "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun26uruesp"
+    },
+    "g-l-05": {
+      "favoriteLabel": "England",
+      "favoriteProbability": 85,
+      "drawProbability": 12,
+      "underdogLabel": "Panama",
+      "underdogProbability": 6,
+      "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun27paneng"
+    },
+    "g-l-06": {
+      "favoriteLabel": "Croatia",
+      "favoriteProbability": 55,
+      "drawProbability": 30,
+      "underdogLabel": "Ghana",
+      "underdogProbability": 17,
+      "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun27crogha"
     }
   }
 }
