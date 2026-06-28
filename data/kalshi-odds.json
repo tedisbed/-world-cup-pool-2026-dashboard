@@ -1,45 +1,4 @@
 {
-  "updatedAt": "2026-06-27T04:12:06.321Z",
-  "matches": {
-    "g-l-05": {
-      "favoriteLabel": "England",
-      "favoriteProbability": 83,
-      "drawProbability": 11,
-      "underdogLabel": "Panama",
-      "underdogProbability": 7,
-      "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun27paneng"
-    },
-    "g-l-06": {
-      "favoriteLabel": "Croatia",
-      "favoriteProbability": 55,
-      "drawProbability": 30,
-      "underdogLabel": "Ghana",
-      "underdogProbability": 17,
-      "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun27crogha"
-    },
-    "g-j-06": {
-      "favoriteLabel": "Argentina",
-      "favoriteProbability": 85,
-      "drawProbability": 11,
-      "underdogLabel": "Jordan",
-      "underdogProbability": 6,
-      "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun27jorarg"
-    },
-    "g-k-05": {
-      "favoriteLabel": "Portugal",
-      "favoriteProbability": 53,
-      "drawProbability": 24,
-      "underdogLabel": "Colombia",
-      "underdogProbability": 25,
-      "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun27colpor"
-    },
-    "g-k-06": {
-      "favoriteLabel": "DR Congo",
-      "favoriteProbability": 57,
-      "drawProbability": 24,
-      "underdogLabel": "Uzbekistan",
-      "underdogProbability": 21,
-      "marketsUrl": "https://kalshi.com/markets/kxwcgame-26jun27coduzb"
-    }
-  }
+  "updatedAt": "2026-06-28T04:45:37.237Z",
+  "matches": {}
 }
