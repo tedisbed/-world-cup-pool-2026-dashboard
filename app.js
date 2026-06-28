@@ -458,12 +458,14 @@ function renderBracket() {
   const bracket = getKnockoutBracket(state);
 
   bracketPanel.innerHTML = `
-    <section class="card">
-      <div class="section-title">
-        <span>Knockout Bracket</span>
-        <small>Current leaders fill in as group results are entered</small>
+    <section class="bracket-board">
+      <div class="bracket-board-head">
+        <div>
+          <span class="eyebrow">Knockout Stage</span>
+          <h2>2026 World Cup Bracket</h2>
+        </div>
+        <small>Projected from current group standings</small>
       </div>
-      ${bracketPathView(bracket)}
       <div class="bracket-scroll">
         <div class="bracket-grid">
           ${bracket.rounds.map(bracketRound).join("")}
@@ -471,89 +473,6 @@ function renderBracket() {
       </div>
     </section>
   `;
-}
-
-function bracketPathView(bracket) {
-  const rounds = Object.fromEntries(bracket.rounds.map((round) => [round.stage, round.matches]));
-  const matchMap = new Map(bracket.rounds.flatMap((round) => round.matches.map((match) => [match.id, match])));
-  const qfMatches = rounds.qf ?? [];
-  const sfMatches = rounds.sf ?? [];
-  const finalMatch = rounds.final?.[0];
-
-  return `
-    <div class="bracket-path">
-      <div class="bracket-path-head">
-        <strong>Path to the Final</strong>
-        <span>Round of 32 winners feed the Round of 16, then into quarters, semis, and final.</span>
-      </div>
-      <div class="bracket-path-grid">
-        ${qfMatches.map((match) => bracketQuarterPath(match, matchMap)).join("")}
-      </div>
-      <div class="bracket-final-path">
-        ${sfMatches.map((match) => bracketNextStep(match, "Semifinal", matchMap)).join("")}
-        ${finalMatch ? bracketNextStep(finalMatch, "Final", matchMap) : ""}
-      </div>
-    </div>
-  `;
-}
-
-function bracketQuarterPath(match, matchMap) {
-  const feederIds = sourceMatchIds(match);
-  return `
-    <article class="bracket-path-lane">
-      <div class="bracket-path-target">
-        <span>Quarterfinal</span>
-        <strong>${escapeHtml(match.title)}</strong>
-      </div>
-      <div class="bracket-path-sources">
-        ${feederIds.map((id) => bracketRoundOf16Path(matchMap.get(id), matchMap)).join("")}
-      </div>
-    </article>
-  `;
-}
-
-function bracketRoundOf16Path(match, matchMap) {
-  if (!match) return "";
-  const feederIds = sourceMatchIds(match);
-  return `
-    <div class="bracket-path-node">
-      <div class="bracket-path-match">
-        <span>Round of 16</span>
-        <strong>${escapeHtml(match.title)}</strong>
-      </div>
-      <div class="bracket-path-mini-list">
-        ${feederIds.map((id) => bracketMiniMatch(matchMap.get(id))).join("")}
-      </div>
-    </div>
-  `;
-}
-
-function bracketMiniMatch(match) {
-  if (!match) return "";
-  return `
-    <div class="bracket-path-mini">
-      <span>${escapeHtml(match.title)}</span>
-      <strong>${match.slots.map((slot) => escapeHtml(slot.team || slot.label)).join(" / ")}</strong>
-    </div>
-  `;
-}
-
-function bracketNextStep(match, label, matchMap) {
-  const feederIds = sourceMatchIds(match);
-  return `
-    <article class="bracket-next-step">
-      <span>${escapeHtml(label)}</span>
-      <strong>${escapeHtml(match.title)}</strong>
-      <em>${feederIds.map((id) => escapeHtml(matchMap.get(id)?.title ?? `Match ${id.slice(1)}`)).join(" vs ")}</em>
-    </article>
-  `;
-}
-
-function sourceMatchIds(match) {
-  return match.slots
-    .map((slot) => String(slot.label).match(/^Winner Match (\d+)$/)?.[1])
-    .filter(Boolean)
-    .map((number) => `m${number}`);
 }
 
 function renderNationPoints() {
@@ -1098,8 +1017,11 @@ function thirdPlaceStatus(row, allGroupsComplete, advancementStatuses = {}) {
 
 function bracketRound(round) {
   return `
-    <section class="bracket-round">
-      <div class="bracket-round-title">${escapeHtml(round.title)}</div>
+    <section class="bracket-round bracket-round-${escapeHtml(round.stage)}">
+      <div class="bracket-round-title">
+        <strong>${escapeHtml(round.title)}</strong>
+        <span>${round.matches.length} ${round.matches.length === 1 ? "match" : "matches"}</span>
+      </div>
       <div class="bracket-match-list">
         ${round.matches.map(bracketMatch).join("")}
       </div>
@@ -1109,9 +1031,14 @@ function bracketRound(round) {
 
 function bracketMatch(match) {
   return `
-    <article class="bracket-match">
-      <div class="bracket-match-title">${escapeHtml(match.title)}</div>
-      ${match.slots.map(bracketSlot).join("")}
+    <article class="bracket-match bracket-match-${escapeHtml(match.stage)}">
+      <div class="bracket-match-title">
+        <span>${escapeHtml(match.title)}</span>
+        <em>${escapeHtml(stageLabels[match.stage] ?? "Knockout")}</em>
+      </div>
+      <div class="bracket-slot-list">
+        ${match.slots.map(bracketSlot).join("")}
+      </div>
     </article>
   `;
 }
@@ -1121,12 +1048,22 @@ function bracketSlot(slot) {
   const advancement = slot.advancementStatus;
   return `
     <div class="bracket-slot ${hasTeam ? "filled" : ""} ${advancement ? `advancement-${escapeHtml(advancement.tone)}` : ""}">
+      <span class="bracket-seed">${escapeHtml(bracketSeedLabel(slot, hasTeam))}</span>
       <strong>${escapeHtml(slot.team || slot.label)}</strong>
-      <span>${hasTeam ? escapeHtml(slot.label) : "Pending"}</span>
-      ${advancement ? `<span class="advance-badge ${escapeHtml(advancement.tone)}">${escapeHtml(advancement.label)}</span>` : ""}
-      ${slot.owner ? `<span class="owner-chip" style="--owner-color:${ownerColor(slot.owner)}">${escapeHtml(slot.owner)}</span>` : ""}
+      <div class="bracket-slot-meta">
+        ${advancement ? `<span class="advance-badge ${escapeHtml(advancement.tone)}">${escapeHtml(advancement.label)}</span>` : `<span>Pending</span>`}
+        ${slot.owner ? `<span class="owner-chip" style="--owner-color:${ownerColor(slot.owner)}">${escapeHtml(slot.owner)}</span>` : ""}
+      </div>
     </div>
   `;
+}
+
+function bracketSeedLabel(slot, hasTeam) {
+  if (!hasTeam) return "TBD";
+  const groupSeed = String(slot.label).match(/^Group ([A-L]) (winner|runner-up)$/);
+  if (groupSeed) return `${groupSeed[1]}${groupSeed[2] === "winner" ? "1" : "2"}`;
+  if (String(slot.label).startsWith("3rd place") || String(slot.label).startsWith("Best 3rd")) return "3rd";
+  return slot.label;
 }
 
 function nationRaceCard(row, { compact = false } = {}) {
