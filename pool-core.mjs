@@ -379,6 +379,19 @@ export const knockoutBracketTemplate = [
   },
 ];
 
+const thirdPlaceGroupAssignmentsByQualifiedSet = {
+  BDEFIJKL: {
+    m74: "D",
+    m77: "F",
+    m79: "E",
+    m80: "K",
+    m81: "B",
+    m82: "I",
+    m85: "J",
+    m87: "L",
+  },
+};
+
 const groups = [...new Set(teams.map((team) => team.group))].sort();
 const teamByName = new Map(teams.map((team) => [team.name, team]));
 const teamOwnerByName = new Map(
@@ -518,6 +531,7 @@ export function getKnockoutBracket(state = createEmptyState()) {
   const standings = getGroupStandings(normalized);
   const advancementStatuses = getGroupAdvancementStatuses(normalized);
   const matchWinners = getBracketMatchWinners(normalized);
+  const thirdPlaceGroupAssignments = getThirdPlaceGroupAssignments(standings);
 
   return {
     rounds: knockoutBracketTemplate.map((round) => ({
@@ -526,7 +540,12 @@ export function getKnockoutBracket(state = createEmptyState()) {
         id: match.id,
         stage: round.stage,
         title: `Match ${match.id.slice(1)}`,
-        slots: match.slots.map((slot) => resolveBracketSlot(slot, standings, matchWinners, advancementStatuses)),
+        slots: match.slots.map((slot) =>
+          resolveBracketSlot(slot, standings, matchWinners, advancementStatuses, {
+            matchId: match.id,
+            thirdPlaceGroupAssignments,
+          }),
+        ),
       })),
     })),
   };
@@ -1418,7 +1437,20 @@ function bracketMatchKey(match) {
   return number ? `m${number}` : "";
 }
 
-function resolveBracketSlot(slot, standings, matchWinners, advancementStatuses = {}) {
+function getThirdPlaceGroupAssignments(standings) {
+  const qualifiedThirdPlaceGroups = groups
+    .map((group) => standings[group]?.[2])
+    .filter((entry) => entry?.played > 0)
+    .sort(compareGroupRecords)
+    .slice(0, 8)
+    .map((record) => record.group)
+    .sort()
+    .join("");
+
+  return thirdPlaceGroupAssignmentsByQualifiedSet[qualifiedThirdPlaceGroups] ?? null;
+}
+
+function resolveBracketSlot(slot, standings, matchWinners, advancementStatuses = {}, { matchId = "", thirdPlaceGroupAssignments = null } = {}) {
   if (slot.type === "group") {
     const label = `Group ${slot.group} ${slot.rank === 1 ? "winner" : "runner-up"}`;
     const record = standings[slot.group]?.[slot.rank - 1];
@@ -1432,7 +1464,9 @@ function resolveBracketSlot(slot, standings, matchWinners, advancementStatuses =
 
   if (slot.type === "third") {
     const label = `Best 3rd ${slot.groups.join("/")}`;
-    const record = slot.groups
+    const assignedGroup = thirdPlaceGroupAssignments?.[matchId] ?? "";
+    const candidateGroups = assignedGroup ? [assignedGroup] : slot.groups;
+    const record = candidateGroups
       .map((group) => standings[group]?.[2])
       .filter((entry) => entry?.played > 0)
       .sort(compareGroupRecords)[0];

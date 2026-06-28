@@ -156,6 +156,94 @@ test("knockout bracket fills group source slots from current standings leaders",
   assert.equal(match86.slots[0].team, "Argentina");
 });
 
+test("round of 32 uses FIFA third-place allocation table once qualifiers are known", () => {
+  const state = createEmptyState();
+  for (const [id, homeScore, awayScore] of [
+    ["g-a-01", 2, 0],
+    ["g-a-02", 2, 1],
+    ["g-b-01", 1, 1],
+    ["g-d-01", 4, 1],
+    ["g-c-01", 0, 1],
+    ["g-d-02", 2, 0],
+    ["g-c-02", 1, 1],
+    ["g-b-02", 1, 1],
+    ["g-e-01", 1, 0],
+    ["g-e-02", 7, 1],
+    ["g-f-01", 2, 2],
+    ["g-f-02", 5, 1],
+    ["g-h-01", 1, 1],
+    ["g-h-02", 0, 0],
+    ["g-g-01", 1, 1],
+    ["g-g-02", 1, 1],
+    ["g-i-01", 3, 1],
+    ["g-i-02", 1, 4],
+    ["g-j-01", 3, 0],
+    ["g-j-02", 3, 1],
+    ["g-l-01", 1, 0],
+    ["g-l-02", 4, 2],
+    ["g-k-01", 1, 1],
+    ["g-k-02", 1, 3],
+    ["g-a-03", 1, 1],
+    ["g-b-03", 4, 1],
+    ["g-b-04", 6, 0],
+    ["g-a-04", 1, 0],
+    ["g-c-03", 3, 0],
+    ["g-c-04", 0, 1],
+    ["g-d-03", 0, 1],
+    ["g-d-04", 2, 0],
+    ["g-e-03", 2, 1],
+    ["g-e-04", 0, 0],
+    ["g-f-03", 5, 1],
+    ["g-f-04", 0, 4],
+    ["g-h-03", 2, 2],
+    ["g-h-04", 4, 0],
+    ["g-g-03", 0, 0],
+    ["g-g-04", 1, 3],
+    ["g-i-03", 3, 2],
+    ["g-i-04", 3, 0],
+    ["g-j-03", 2, 0],
+    ["g-j-04", 1, 2],
+    ["g-l-03", 0, 0],
+    ["g-l-04", 0, 1],
+    ["g-k-03", 5, 0],
+    ["g-k-04", 1, 0],
+    ["g-c-05", 0, 3],
+    ["g-c-06", 4, 2],
+    ["g-b-05", 2, 1],
+    ["g-b-06", 3, 1],
+    ["g-a-05", 0, 3],
+    ["g-a-06", 1, 0],
+    ["g-e-05", 0, 2],
+    ["g-e-06", 2, 1],
+    ["g-f-05", 1, 1],
+    ["g-f-06", 1, 3],
+    ["g-d-05", 3, 2],
+    ["g-d-06", 0, 0],
+    ["g-i-05", 1, 5],
+    ["g-i-06", 5, 0],
+    ["g-g-05", 1, 1],
+    ["g-g-06", 1, 5],
+    ["g-h-05", 0, 0],
+    ["g-h-06", 0, 1],
+    ["g-l-05", 0, 1],
+    ["g-l-06", 2, 1],
+    ["g-j-05", 3, 3],
+    ["g-j-06", 1, 3],
+    ["g-k-05", 0, 0],
+    ["g-k-06", 3, 1],
+  ]) {
+    state.matches[id] = { homeScore, awayScore, status: "final" };
+  }
+
+  const roundOf32 = getKnockoutBracket(state).rounds.find((round) => round.stage === "r32");
+  const teamsFor = (matchId) => roundOf32.matches.find((match) => match.id === matchId).slots.map((slot) => slot.team);
+
+  assert.deepEqual(teamsFor("m74"), ["Germany", "Paraguay"]);
+  assert.deepEqual(teamsFor("m77"), ["France", "Sweden"]);
+  assert.deepEqual(teamsFor("m80"), ["England", "DR Congo"]);
+  assert.deepEqual(teamsFor("m87"), ["Colombia", "Ghana"]);
+});
+
 test("group advancement statuses distinguish confirmed and projected outcomes", () => {
   const state = createEmptyState();
   state.matches["g-a-01"] = { homeScore: 2, awayScore: 0, status: "final" };
