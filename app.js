@@ -1034,7 +1034,7 @@ function bracketMatch(match) {
     <article class="bracket-match bracket-match-${escapeHtml(match.stage)}">
       <div class="bracket-match-title">
         <span>${escapeHtml(match.title)}</span>
-        <em>${escapeHtml(stageLabels[match.stage] ?? "Knockout")}</em>
+        <em>${escapeHtml(formatDate(match.date))}</em>
       </div>
       <div class="bracket-slot-list">
         ${match.slots.map(bracketSlot).join("")}

@@ -143,6 +143,17 @@ test("knockout bracket starts with source placeholders", () => {
   );
 });
 
+test("knockout bracket includes scheduled dates for bracket cards", () => {
+  const bracket = getKnockoutBracket(createEmptyState());
+  const matches = new Map(bracket.rounds.flatMap((round) => round.matches.map((match) => [match.id, match])));
+
+  assert.equal(matches.get("m73").date, "2026-06-28");
+  assert.equal(matches.get("m89").date, "2026-07-04");
+  assert.equal(matches.get("m97").date, "2026-07-09");
+  assert.equal(matches.get("m101").date, "2026-07-14");
+  assert.equal(matches.get("m104").date, "2026-07-19");
+});
+
 test("knockout bracket fills group source slots from current standings leaders", () => {
   const state = createEmptyState();
   state.matches["g-j-01"] = { homeScore: 2, awayScore: 0, status: "final" };

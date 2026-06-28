@@ -379,6 +379,40 @@ export const knockoutBracketTemplate = [
   },
 ];
 
+const knockoutMatchDates = {
+  m73: "2026-06-28",
+  m74: "2026-06-29",
+  m75: "2026-06-29",
+  m76: "2026-06-29",
+  m77: "2026-06-30",
+  m78: "2026-06-30",
+  m79: "2026-06-30",
+  m80: "2026-07-01",
+  m81: "2026-07-01",
+  m82: "2026-07-01",
+  m83: "2026-07-02",
+  m84: "2026-07-02",
+  m85: "2026-07-02",
+  m86: "2026-07-03",
+  m87: "2026-07-03",
+  m88: "2026-07-03",
+  m89: "2026-07-04",
+  m90: "2026-07-04",
+  m91: "2026-07-05",
+  m92: "2026-07-05",
+  m93: "2026-07-06",
+  m94: "2026-07-06",
+  m95: "2026-07-07",
+  m96: "2026-07-07",
+  m97: "2026-07-09",
+  m98: "2026-07-10",
+  m99: "2026-07-11",
+  m100: "2026-07-11",
+  m101: "2026-07-14",
+  m102: "2026-07-15",
+  m104: "2026-07-19",
+};
+
 const groups = [...new Set(teams.map((team) => team.group))].sort();
 const teamByName = new Map(teams.map((team) => [team.name, team]));
 const teamOwnerByName = new Map(
@@ -525,6 +559,7 @@ export function getKnockoutBracket(state = createEmptyState()) {
       matches: round.matches.map((match) => ({
         id: match.id,
         stage: round.stage,
+        date: knockoutMatchDates[match.id] ?? "",
         title: `Match ${match.id.slice(1)}`,
         slots: match.slots.map((slot) => resolveBracketSlot(slot, standings, matchWinners, advancementStatuses)),
       })),
