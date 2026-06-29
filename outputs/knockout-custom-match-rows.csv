@@ -1,0 +1,17 @@
+type,id,homeScore,awayScore,status,wentToPens,penaltyWinner,player,goals,winner,date,stage,group,venue,home,away
+custom_match,m73,,,,,,,,,2026-06-28,r32,,"SoFi Stadium, Inglewood",South Africa,Canada
+custom_match,m74,,,,,,,,,2026-06-29,r32,,"Gillette Stadium, Foxborough",Germany,Paraguay
+custom_match,m75,,,,,,,,,2026-06-29,r32,,"Estadio BBVA, Guadalupe",Netherlands,Morocco
+custom_match,m76,,,,,,,,,2026-06-29,r32,,"NRG Stadium, Houston",Brazil,Japan
+custom_match,m77,,,,,,,,,2026-06-30,r32,,"MetLife Stadium, East Rutherford",France,Sweden
+custom_match,m78,,,,,,,,,2026-06-30,r32,,"AT&T Stadium, Arlington",Ivory Coast,Norway
+custom_match,m79,,,,,,,,,2026-06-30,r32,,"Estadio Azteca, Mexico City",Mexico,Ecuador
+custom_match,m80,,,,,,,,,2026-07-01,r32,,"Mercedes-Benz Stadium, Atlanta",England,DR Congo
+custom_match,m81,,,,,,,,,2026-07-01,r32,,"Levi's Stadium, Santa Clara",United States,Bosnia and Herzegovina
+custom_match,m82,,,,,,,,,2026-07-01,r32,,"Lumen Field, Seattle",Belgium,Senegal
+custom_match,m83,,,,,,,,,2026-07-02,r32,,"BMO Field, Toronto",Portugal,Croatia
+custom_match,m84,,,,,,,,,2026-07-02,r32,,"SoFi Stadium, Inglewood",Spain,Austria
+custom_match,m85,,,,,,,,,2026-07-02,r32,,"BC Place, Vancouver",Switzerland,Algeria
+custom_match,m86,,,,,,,,,2026-07-03,r32,,"Hard Rock Stadium, Miami Gardens",Argentina,Cape Verde
+custom_match,m87,,,,,,,,,2026-07-03,r32,,"Arrowhead Stadium, Kansas City",Colombia,Ghana
+custom_match,m88,,,,,,,,,2026-07-03,r32,,"AT&T Stadium, Arlington",Australia,Egypt

@@ -1,0 +1,6 @@
+type,id,homeScore,awayScore,status,wentToPens,penaltyWinner,player,goals,winner,date,stage,group,venue,home,away
+match,g-g-01,2,2,final,,,,,,2026-06-15,group,G,Los Angeles,Iran,New Zealand
+match,g-i-05,1,4,final,,,,,,2026-06-26,group,I,Boston,Norway,France
+match,g-l-05,0,2,final,,,,,,2026-06-27,group,L,New York/New Jersey,Panama,England
+match_player_goal,g-l-05,,,,,,Kane,1,,,,,,,
+match_player_goal,g-j-06,,,,,,Messi,1,,,,,,,
