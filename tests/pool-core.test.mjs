@@ -169,6 +169,34 @@ test("knockout bracket fills group source slots from current standings leaders",
   assert.equal(match86.slots[0].team, "Argentina");
 });
 
+test("knockout bracket uses sheet-provided official match participants", () => {
+  const state = createEmptyState();
+  state.customMatches = [
+    {
+      id: "m74",
+      stage: "r32",
+      date: "2026-06-29",
+      venue: "Gillette Stadium, Foxborough",
+      home: "Germany",
+      away: "Paraguay",
+      status: "scheduled",
+    },
+  ];
+
+  const bracket = getKnockoutBracket(state);
+  const match74 = bracket.rounds
+    .find((round) => round.stage === "r32")
+    .matches.find((match) => match.id === "m74");
+
+  assert.deepEqual(
+    match74.slots.map((slot) => ({ label: slot.label, team: slot.team })),
+    [
+      { label: "Sheet home", team: "Germany" },
+      { label: "Sheet away", team: "Paraguay" },
+    ],
+  );
+});
+
 test("knockout bracket exposes scores and advances official bracket winners", () => {
   const state = createEmptyState();
   state.matches["g-j-01"] = { homeScore: 2, awayScore: 0, status: "final" };

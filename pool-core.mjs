@@ -1525,8 +1525,8 @@ function getBracketMatchWinners(state) {
 }
 
 function resolveBracketMatch(match, stage, state, standings, matchWinners, advancementStatuses) {
-  const slots = match.slots.map((slot) => resolveBracketSlot(slot, standings, matchWinners, advancementStatuses));
   const result = bracketMatchResult(state, match.id);
+  const slots = bracketMatchSlots(match, result, standings, matchWinners, advancementStatuses);
   const winner = bracketResultWinner(result, slots);
   if (winner) matchWinners[match.id] = winner;
 
@@ -1542,6 +1542,25 @@ function resolveBracketMatch(match, stage, state, standings, matchWinners, advan
     penaltyWinner: result?.penaltyWinner || "",
     winner,
     slots,
+  };
+}
+
+function bracketMatchSlots(match, result, standings, matchWinners, advancementStatuses) {
+  if (result?.home && result?.away) {
+    return [
+      bracketSheetSlot("Sheet home", result.home, advancementStatuses),
+      bracketSheetSlot("Sheet away", result.away, advancementStatuses),
+    ];
+  }
+  return match.slots.map((slot) => resolveBracketSlot(slot, standings, matchWinners, advancementStatuses));
+}
+
+function bracketSheetSlot(label, team, advancementStatuses) {
+  return {
+    label,
+    team,
+    owner: getOwnerForTeam(team),
+    advancementStatus: advancementStatuses[team] ?? null,
   };
 }
 
