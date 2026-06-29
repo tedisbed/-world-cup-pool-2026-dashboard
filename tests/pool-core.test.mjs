@@ -4,11 +4,13 @@ import test from "node:test";
 import {
   calculateScores,
   createEmptyState,
+  fixtures,
   getMatchesByDate,
   getMatchesForDate,
   getGroupStandings,
   getGroupAdvancementStatuses,
   getKnockoutBracket,
+  getLeaderboardPickStatuses,
   getNationPointStandings,
   getOwnerOpportunityRows,
   getPlayerGoalTotals,
@@ -279,11 +281,11 @@ test("nation point standings split last-standing races by group and federation",
 
 test("nation point standings eliminate official bracket losers", () => {
   const state = createEmptyState();
-  state.matches["g-a-01"] = { homeScore: 1, awayScore: 0, status: "final" };
-  state.matches["g-a-02"] = { homeScore: 1, awayScore: 0, status: "final" };
+  state.matches["g-a-01"] = { homeScore: 2, awayScore: 1, status: "final" };
+  state.matches["g-a-02"] = { homeScore: 0, awayScore: 1, status: "final" };
   state.matches["g-a-03"] = { homeScore: 0, awayScore: 2, status: "final" };
   state.matches["g-a-04"] = { homeScore: 2, awayScore: 0, status: "final" };
-  state.matches["g-a-05"] = { homeScore: 0, awayScore: 3, status: "final" };
+  state.matches["g-a-05"] = { homeScore: 0, awayScore: 2, status: "final" };
   state.matches["g-a-06"] = { homeScore: 2, awayScore: 0, status: "final" };
   state.matches["g-b-01"] = { homeScore: 2, awayScore: 0, status: "final" };
   state.matches["g-b-02"] = { homeScore: 0, awayScore: 3, status: "final" };
@@ -303,6 +305,53 @@ test("nation point standings eliminate official bracket losers", () => {
   assert.equal(groupSouthAfrica.label, "Lost Round of 32");
   assert.equal(cafSouthAfrica.alive, false);
   assert.equal(cafSouthAfrica.label, "Lost Round of 32");
+});
+
+test("official knockout bracket wins score for team owners", () => {
+  const state = createEmptyState();
+  state.matches["g-a-01"] = { homeScore: 1, awayScore: 0, status: "final" };
+  state.matches["g-a-02"] = { homeScore: 1, awayScore: 0, status: "final" };
+  state.matches["g-a-03"] = { homeScore: 0, awayScore: 2, status: "final" };
+  state.matches["g-a-04"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-a-05"] = { homeScore: 0, awayScore: 3, status: "final" };
+  state.matches["g-a-06"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-b-01"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-b-02"] = { homeScore: 0, awayScore: 3, status: "final" };
+  state.matches["g-b-03"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-b-04"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-b-05"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-b-06"] = { homeScore: 1, awayScore: 0, status: "final" };
+  state.matches.m73 = { homeScore: 1, awayScore: 2, status: "final" };
+
+  const result = calculateScores(state);
+  const kreienberg = result.ownerTotals.find((row) => row.owner === "Kreienberg");
+
+  assert.ok(kreienberg.details.some((detail) => detail.reason === "Canada won Round of 32" && detail.points === 4));
+});
+
+test("leaderboard pick statuses distinguish knockout eliminations from group exits", () => {
+  const state = createEmptyState();
+  state.matches["g-a-01"] = { homeScore: 1, awayScore: 0, status: "final" };
+  state.matches["g-a-02"] = { homeScore: 1, awayScore: 0, status: "final" };
+  state.matches["g-a-03"] = { homeScore: 0, awayScore: 2, status: "final" };
+  state.matches["g-a-04"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-a-05"] = { homeScore: 0, awayScore: 3, status: "final" };
+  state.matches["g-a-06"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-b-01"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-b-02"] = { homeScore: 0, awayScore: 3, status: "final" };
+  state.matches["g-b-03"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-b-04"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-b-05"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-b-06"] = { homeScore: 1, awayScore: 0, status: "final" };
+  state.matches.m73 = { homeScore: 1, awayScore: 2, status: "final" };
+
+  const statuses = getLeaderboardPickStatuses(state);
+
+  assert.equal(statuses["South Africa"].badgeLabel, "KO'D");
+  assert.equal(statuses["South Africa"].tone, "knocked-out");
+  assert.equal(statuses["South Africa"].titleLabel, "Knocked out in Round of 32");
+  assert.equal(statuses.Czechia.badgeLabel, "Out");
+  assert.equal(statuses.Czechia.tone, "out");
 });
 
 test("scoreless tracker keeps scoreless teams ahead of teams that have scored", () => {
@@ -378,4 +427,32 @@ test("single-team federation survivor points score immediately", () => {
         detail.points === 5,
     ),
   );
+});
+
+test("same-round survivor ties award all tied teams", () => {
+  const state = createEmptyState();
+  for (const fixture of fixtures.filter((match) => match.stage === "group")) {
+    state.matches[fixture.id] = { homeScore: 1, awayScore: 0, status: "final" };
+  }
+  state.matches["g-a-01"] = { homeScore: 2, awayScore: 1, status: "final" };
+  state.matches["g-a-02"] = { homeScore: 0, awayScore: 0, status: "final" };
+  state.matches["g-a-03"] = { homeScore: 0, awayScore: 2, status: "final" };
+  state.matches["g-a-04"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-a-05"] = { homeScore: 0, awayScore: 2, status: "final" };
+  state.matches["g-a-06"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.customMatches = [
+    { id: "custom-r32-mexico", stage: "r32", home: "Mexico", away: "Brazil", homeScore: 0, awayScore: 1, status: "final" },
+    { id: "custom-r32-south-africa", stage: "r32", home: "South Africa", away: "Canada", homeScore: 1, awayScore: 2, status: "final" },
+  ];
+
+  const standings = getNationPointStandings(state);
+  const groupA = standings.groupRows.find((row) => row.key === "A");
+  const result = calculateScores(state);
+  const schellyMitchell = result.ownerTotals.find((row) => row.owner === "Schelly / Mitchell");
+  const sherman = result.ownerTotals.find((row) => row.owner === "Sherman");
+
+  assert.deepEqual(groupA.winners.sort(), ["Mexico", "South Africa"]);
+  assert.equal(groupA.status, "Last standing tie: Mexico, South Africa");
+  assert.ok(schellyMitchell.details.some((detail) => detail.reason === "Mexico last standing from Group A" && detail.points === 7));
+  assert.ok(sherman.details.some((detail) => detail.reason === "South Africa last standing from Group A" && detail.points === 7));
 });

@@ -743,6 +743,40 @@ export function getGroupAdvancementStatuses(state = createEmptyState()) {
   return statuses;
 }
 
+export function getLeaderboardPickStatuses(state = createEmptyState()) {
+  const groupStatuses = getGroupAdvancementStatuses(state);
+  const progress = getTeamProgress(state);
+  const statuses = {};
+
+  for (const team of teams) {
+    const groupStatus = groupStatuses[team.name] ?? null;
+    const teamProgress = progress[team.name] ?? null;
+    if (teamProgress && !teamProgress.alive && teamProgress.label.startsWith("Lost ")) {
+      const round = teamProgress.label.replace(/^Lost\s+/, "");
+      statuses[team.name] = {
+        ...groupStatus,
+        label: "KNOCKED OUT",
+        badgeLabel: "KO'D",
+        titleLabel: `Knocked out in ${round}`,
+        tone: "knocked-out",
+        confirmed: true,
+        eliminated: true,
+        projected: false,
+        knockout: true,
+      };
+    } else {
+      statuses[team.name] = {
+        ...groupStatus,
+        badgeLabel: leaderboardPickBadgeLabel(groupStatus),
+        titleLabel: leaderboardPickTitleLabel(groupStatus),
+        knockout: false,
+      };
+    }
+  }
+
+  return statuses;
+}
+
 function groupAdvancementStatus(row, groupRows, { allGroupsComplete, groupComplete, projectedThirdPlaceTeams, qualified }) {
   if (qualified.has(row.team)) {
     return { label: row.rank === 3 ? "CONF 3RD" : "CONFIRMED", tone: "confirmed", confirmed: true, eliminated: false, projected: true };
@@ -776,6 +810,20 @@ function groupAdvancementStatus(row, groupRows, { allGroupsComplete, groupComple
   return { label: "PROJ OUT", tone: "out", confirmed: false, eliminated: false, projected: false };
 }
 
+function leaderboardPickBadgeLabel(status) {
+  if (!status) return "Open";
+  if (status.eliminated) return status.confirmed ? "Out" : "Proj out";
+  if (status.tone === "bubble") return status.confirmed ? "Bubble" : "3rd bubble";
+  return status.confirmed ? "In" : "Proj in";
+}
+
+function leaderboardPickTitleLabel(status) {
+  if (!status) return "Open";
+  if (status.eliminated) return status.confirmed ? "Out in group stage" : "Projected out";
+  if (status.tone === "bubble") return status.confirmed ? "Third-place bubble" : "Projected third-place bubble";
+  return status.confirmed ? "Advanced from group" : "Projected to advance";
+}
+
 function isConfirmedTopTwo(row, groupRows) {
   const teamsThatCanCatch = groupRows.filter((other) => other.team !== row.team && maxGroupPoints(other) >= row.points);
   return teamsThatCanCatch.length <= 1;
@@ -801,7 +849,7 @@ export function calculateScores(inputState = createEmptyState()) {
     row.details.push({ points, reason, subject, category });
   };
 
-  for (const match of getAllMatches(state)) {
+  for (const match of getScoringMatches(state)) {
     if (!isCompletedMatch(match)) continue;
     const winner = getMatchWinner(match);
     const loser = getMatchLoser(match);
@@ -1150,6 +1198,10 @@ function getResolvedKnockoutMatches(state) {
   return [...customAndFixtureMatches, ...officialMatches.filter((match) => !existingKeys.has(match.id))];
 }
 
+function getScoringMatches(state) {
+  return [...getAllMatches(state).filter((match) => match.stage === "group"), ...getResolvedKnockoutMatches(state)];
+}
+
 export function getNationPointStandings(state = createEmptyState()) {
   const progress = getTeamProgress(state);
   const federations = [...new Set(teams.map((team) => team.federation))].sort();
@@ -1296,10 +1348,12 @@ function scoreNationBonuses(state, add) {
 
 function awardLastStanding(teamNames, progress, points, reasonForTeam, add, category) {
   const rows = teamNames.map((team) => progress[team]).filter(Boolean);
-  const winner = lastStandingWinner(rows);
-  if (!winner) return;
+  const winners = lastStandingWinners(rows);
+  if (!winners.length) return;
 
-  add(getOwnerForTeam(winner.team), points, reasonForTeam(winner.team), winner.team, category);
+  for (const winner of winners) {
+    add(getOwnerForTeam(winner.team), points, reasonForTeam(winner.team), winner.team, category);
+  }
 }
 
 function nationPointRace({ key, title, points, teamNames, progress }) {
@@ -1308,15 +1362,23 @@ function nationPointRace({ key, title, points, teamNames, progress }) {
     .filter(Boolean)
     .sort((a, b) => b.rank - a.rank || Number(b.alive) - Number(a.alive) || a.team.localeCompare(b.team));
   const liveRows = rows.filter((row) => row.alive);
-  const winner = lastStandingWinner(rows);
+  const winners = lastStandingWinners(rows);
+  const winnerNames = winners.map((winner) => winner.team);
+  const status = winners.length > 1
+    ? `Last standing tie: ${winnerNames.join(", ")}`
+    : winners.length === 1
+      ? `Last standing: ${winnerNames[0]}`
+      : `${liveRows.length} alive`;
 
   return {
     key,
     title,
     points,
-    status: winner ? `Last standing: ${winner.team}` : `${liveRows.length} alive`,
-    winner: winner?.team ?? "",
-    owner: winner ? getOwnerForTeam(winner.team) : "",
+    status,
+    winner: winners.length === 1 ? winners[0].team : "",
+    winners: winnerNames,
+    owner: winners.length === 1 ? getOwnerForTeam(winners[0].team) : "",
+    winnerOwners: winners.map((winner) => ({ team: winner.team, owner: getOwnerForTeam(winner.team) })),
     contenders: rows.map((row) => ({
       team: row.team,
       owner: getOwnerForTeam(row.team),
@@ -1329,15 +1391,16 @@ function nationPointRace({ key, title, points, teamNames, progress }) {
   };
 }
 
-function lastStandingWinner(rows) {
+function lastStandingWinners(rows) {
   const liveRows = rows.filter((row) => row.alive);
-  if (liveRows.length > 1) return null;
+  if (liveRows.length > 1) return [];
 
   const topRank = Math.max(0, ...rows.map((row) => row.rank));
   const candidates = rows.filter((row) => row.rank === topRank);
-  if (candidates.length !== 1) return null;
-  if (liveRows.length === 1 && liveRows[0].team !== candidates[0].team) return null;
-  return candidates[0];
+  if (liveRows.length === 1) {
+    return candidates.some((candidate) => candidate.team === liveRows[0].team) ? liveRows : [];
+  }
+  return candidates;
 }
 
 export function getMatchImpact(match, state = createEmptyState()) {

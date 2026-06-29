@@ -8,6 +8,7 @@ import {
   getGroupAdvancementStatuses,
   getGroupStandings,
   getKnockoutBracket,
+  getLeaderboardPickStatuses,
   getMatchImpact,
   getMatchWinner,
   getMatchesForDate,
@@ -211,7 +212,7 @@ function renderActiveTab() {
 
 function renderLeaderboard(result) {
   const maxScore = Math.max(1, ...result.ownerTotals.map((row) => row.score));
-  const advancementStatuses = getGroupAdvancementStatuses(state);
+  const advancementStatuses = getLeaderboardPickStatuses(state);
   dom.leaderboard.innerHTML = result.ownerTotals
     .map((row, index) => {
       const picks = draftPicks.filter((pick) => pick.owner === row.owner);
@@ -1089,11 +1090,7 @@ function nationRaceCard(row, { compact = false } = {}) {
         </div>
         <span class="point-chip">+${row.points}</span>
       </div>
-      ${
-        row.winner
-          ? `<div class="nation-race-winner"><span>Last standing</span><strong>${escapeHtml(row.winner)}</strong><span class="owner-chip" style="--owner-color:${ownerColor(row.owner)}">${escapeHtml(row.owner)}</span></div>`
-          : ""
-      }
+      ${nationRaceWinnerBlock(row)}
       <div class="nation-contender-list ${compact ? "compact" : ""}">
         ${contenders.map((contender) => nationContenderRow(contender, { compact })).join("")}
       </div>
@@ -1101,12 +1098,33 @@ function nationRaceCard(row, { compact = false } = {}) {
   `;
 }
 
-function nationContenderRow(row, { compact = false } = {}) {
-  const badge = row.alive ? (row.label.includes("confirmed") ? "CONF" : "LIVE") : "ELIM";
+function nationRaceWinnerBlock(row) {
+  const winners = row.winnerOwners?.length ? row.winnerOwners : row.winner ? [{ team: row.winner, owner: row.owner }] : [];
+  if (!winners.length) return "";
   return `
-    <div class="nation-contender-row ${compact ? "compact" : ""} ${row.alive ? "" : "eliminated"}">
+    <div class="nation-race-winner">
+      <span>${winners.length > 1 ? "Last standing tie" : "Last standing"}</span>
+      <div class="nation-race-winner-list">
+        ${winners
+          .map(
+            (winner) => `
+              <strong>${escapeHtml(winner.team)}</strong>
+              <span class="owner-chip" style="--owner-color:${ownerColor(winner.owner)}">${escapeHtml(winner.owner)}</span>
+            `,
+          )
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
+function nationContenderRow(row, { compact = false } = {}) {
+  const knockedOut = row.label.startsWith("Lost ");
+  const badge = knockedOut ? "KO'D" : row.alive ? (row.label.includes("confirmed") ? "CONF" : "LIVE") : "ELIM";
+  return `
+    <div class="nation-contender-row ${compact ? "compact" : ""} ${row.alive ? "" : "eliminated"} ${knockedOut ? "knocked-out" : ""}">
       <div>
-        <strong>${escapeHtml(row.team)} <span class="survival-badge ${row.alive ? "live" : "eliminated"}">${escapeHtml(badge)}</span></strong>
+        <strong>${escapeHtml(row.team)} <span class="survival-badge ${knockedOut ? "knocked-out" : row.alive ? "live" : "eliminated"}">${escapeHtml(badge)}</span></strong>
         <span>${escapeHtml(row.label)} · ${escapeHtml(row.group)} · ${escapeHtml(row.federation)}</span>
       </div>
       <span class="owner-chip" style="--owner-color:${ownerColor(row.owner)}">${escapeHtml(row.owner)}</span>
@@ -1134,8 +1152,9 @@ function pickBadge(pick, advancementStatuses = {}) {
   const advancement = advancementStatuses[pick.name];
   const tone = advancement?.tone ?? "open";
   const statusLabel = leaderboardPickStatusLabel(advancement);
+  const titleLabel = advancement?.titleLabel ?? statusLabel;
   return `
-    <span class="team-chip leaderboard-team-chip ${escapeHtml(tone)}" title="${escapeHtml(`${pick.name}: ${statusLabel}`)}">
+    <span class="team-chip leaderboard-team-chip ${escapeHtml(tone)}" title="${escapeHtml(`${pick.name}: ${titleLabel}`)}">
       <span>${escapeHtml(label)}</span>
       <small>${escapeHtml(statusLabel)}</small>
     </span>
@@ -1143,6 +1162,7 @@ function pickBadge(pick, advancementStatuses = {}) {
 }
 
 function leaderboardPickStatusLabel(advancement) {
+  if (advancement?.badgeLabel) return advancement.badgeLabel;
   if (!advancement) return "Open";
   if (advancement.eliminated) return advancement.confirmed ? "Out" : "Proj out";
   if (advancement.tone === "bubble") return advancement.confirmed ? "Bubble" : "3rd bubble";

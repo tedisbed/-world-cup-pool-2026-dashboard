@@ -53,3 +53,15 @@ test("Google Sheet CSV parser loads score rows", () => {
   assert.equal(result.matches["g-a-01"].homeScore, 2);
   assert.equal(result.matches["g-a-01"].awayScore, 1);
 });
+
+test("Google Sheet CSV parser loads underscore score columns for official bracket rows", () => {
+  const csv = [
+    "type,id,home_score,away_score,status",
+    "match,m73,1,2,final",
+  ].join("\n");
+  const result = parseStateCsv(csv);
+
+  assert.equal(result.matches.m73.homeScore, 1);
+  assert.equal(result.matches.m73.awayScore, 2);
+  assert.equal(result.matches.m73.status, "final");
+});

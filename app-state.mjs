@@ -45,7 +45,7 @@ export function parseStateCsv(csv) {
 
 function applyCsvRow(state, row) {
   const type = normalizeHeader(row.type || row.record || row.entity || row.kind);
-  const id = String(row.id || row.matchid || row.match_id || row.key || "").trim();
+  const id = normalizeRecordId(row.id || row.matchid || row.match_id || row.key || "");
   if (!type || !id) return;
 
   if (type === "match") {
@@ -92,12 +92,29 @@ function applyCsvRow(state, row) {
 
 function matchFieldsFromRow(row) {
   const fields = {};
-  if ("homescore" in row && row.homescore !== "") fields.homeScore = numberFromCsv(row.homescore);
-  if ("awayscore" in row && row.awayscore !== "") fields.awayScore = numberFromCsv(row.awayscore);
+  const homeScore = csvValue(row, "homescore", "home_score");
+  const awayScore = csvValue(row, "awayscore", "away_score");
+  if (homeScore !== "") fields.homeScore = numberFromCsv(homeScore);
+  if (awayScore !== "") fields.awayScore = numberFromCsv(awayScore);
   if (row.status) fields.status = row.status;
-  if ("wenttopens" in row && row.wenttopens !== "") fields.wentToPens = booleanFromCsv(row.wenttopens);
-  if (row.penaltywinner) fields.penaltyWinner = row.penaltywinner;
+  const wentToPens = csvValue(row, "wenttopens", "went_to_pens");
+  const penaltyWinner = csvValue(row, "penaltywinner", "penalty_winner");
+  if (wentToPens !== "") fields.wentToPens = booleanFromCsv(wentToPens);
+  if (penaltyWinner) fields.penaltyWinner = penaltyWinner;
   return fields;
+}
+
+function normalizeRecordId(value) {
+  const raw = String(value ?? "").trim();
+  const bracketNumber = raw.match(/^(?:match\s*)?([7-9][0-9]|10[0-4])$/i)?.[1];
+  return bracketNumber ? `m${bracketNumber}` : raw;
+}
+
+function csvValue(row, ...keys) {
+  for (const key of keys) {
+    if (key in row) return row[key];
+  }
+  return "";
 }
 
 function parseCsvRows(csv) {

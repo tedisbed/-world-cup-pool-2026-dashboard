@@ -303,6 +303,18 @@ h1 {
   color: #fff;
 }
 
+.leaderboard-team-chip.knocked-out {
+  border-color: #8f2f38;
+  background: linear-gradient(180deg, #f9e6e8 0%, #fff7f7 100%);
+  color: #701d26;
+}
+
+.leaderboard-team-chip.knocked-out small {
+  background: #15171d;
+  color: #fff;
+  letter-spacing: 0.02em;
+}
+
 .score-bar {
   height: 4px;
   max-width: 100%;
@@ -1237,6 +1249,14 @@ button:disabled {
   text-transform: uppercase;
 }
 
+.nation-race-winner-list {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 8px;
+  align-items: center;
+}
+
 .nation-contender-list {
   display: grid;
   gap: 6px;
@@ -1271,6 +1291,10 @@ button:disabled {
   opacity: 0.62;
 }
 
+.nation-contender-row.knocked-out {
+  opacity: 0.78;
+}
+
 .survival-badge {
   display: inline-grid;
   place-items: center;
@@ -1293,6 +1317,11 @@ button:disabled {
 .survival-badge.eliminated {
   background: #fff0ee;
   color: #a33129;
+}
+
+.survival-badge.knocked-out {
+  background: #15171d;
+  color: #fff;
 }
 
 .scoreless-card {
