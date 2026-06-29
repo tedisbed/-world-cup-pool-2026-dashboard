@@ -756,7 +756,7 @@ export function getLeaderboardPickStatuses(state = createEmptyState()) {
       statuses[team.name] = {
         ...groupStatus,
         label: "KNOCKED OUT",
-        badgeLabel: "KO'D",
+        badgeLabel: knockoutBadgeLabel(round),
         titleLabel: `Knocked out in ${round}`,
         tone: "knocked-out",
         confirmed: true,
@@ -775,6 +775,18 @@ export function getLeaderboardPickStatuses(state = createEmptyState()) {
   }
 
   return statuses;
+}
+
+function knockoutBadgeLabel(round) {
+  const suffixByRound = {
+    "Round of 32": "32",
+    "Round of 16": "16",
+    Quarterfinals: "QF",
+    Semifinals: "SF",
+    Final: "F",
+  };
+  const suffix = suffixByRound[round];
+  return suffix ? `KO'D - ${suffix}` : "KO'D";
 }
 
 function groupAdvancementStatus(row, groupRows, { allGroupsComplete, groupComplete, projectedThirdPlaceTeams, qualified }) {

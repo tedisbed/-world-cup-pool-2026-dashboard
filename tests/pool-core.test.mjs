@@ -375,7 +375,7 @@ test("leaderboard pick statuses distinguish knockout eliminations from group exi
 
   const statuses = getLeaderboardPickStatuses(state);
 
-  assert.equal(statuses["South Africa"].badgeLabel, "KO'D");
+  assert.equal(statuses["South Africa"].badgeLabel, "KO'D - 32");
   assert.equal(statuses["South Africa"].tone, "knocked-out");
   assert.equal(statuses["South Africa"].titleLabel, "Knocked out in Round of 32");
   assert.equal(statuses.Czechia.badgeLabel, "Out");
