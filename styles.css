@@ -1085,7 +1085,7 @@ button:disabled {
 
 .bracket-slot {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-columns: 44px minmax(0, 1fr) auto;
   gap: 5px 8px;
   align-items: center;
   min-height: 50px;
@@ -1109,6 +1109,15 @@ button:disabled {
   background: #fff8f7;
 }
 
+.bracket-slot.winner {
+  border-color: #4daa6a;
+  background: #f1fbf5;
+}
+
+.bracket-slot.loser {
+  opacity: 0.72;
+}
+
 .bracket-seed {
   display: grid;
   min-height: 30px;
@@ -1126,6 +1135,19 @@ button:disabled {
   overflow-wrap: anywhere;
   font-size: 15px;
   line-height: 1.15;
+}
+
+.bracket-score {
+  display: grid;
+  min-width: 28px;
+  min-height: 30px;
+  place-items: center;
+  border-radius: 6px;
+  background: #111827;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 950;
+  line-height: 1;
 }
 
 .bracket-slot-meta {

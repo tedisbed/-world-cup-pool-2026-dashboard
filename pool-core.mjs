@@ -552,19 +552,18 @@ export function getKnockoutBracket(state = createEmptyState()) {
   const standings = getGroupStandings(normalized);
   const advancementStatuses = getGroupAdvancementStatuses(normalized);
   const matchWinners = getBracketMatchWinners(normalized);
+  const rounds = [];
 
-  return {
-    rounds: knockoutBracketTemplate.map((round) => ({
+  for (const round of knockoutBracketTemplate) {
+    rounds.push({
       ...round,
       matches: round.matches.map((match) => ({
-        id: match.id,
-        stage: round.stage,
-        date: knockoutMatchDates[match.id] ?? "",
-        title: `Match ${match.id.slice(1)}`,
-        slots: match.slots.map((slot) => resolveBracketSlot(slot, standings, matchWinners, advancementStatuses)),
+        ...resolveBracketMatch(match, round.stage, normalized, standings, matchWinners, advancementStatuses),
       })),
-    })),
-  };
+    });
+  }
+
+  return { rounds };
 }
 
 export function isCompletedMatch(match) {
@@ -1107,8 +1106,7 @@ export function getTeamProgress(state = createEmptyState()) {
   }
 
   const stageRank = { r32: 1, r16: 2, qf: 3, sf: 4, final: 5 };
-  const knockoutMatches = getAllMatches(state)
-    .filter((match) => match.stage !== "group" && isCompletedMatch(match))
+  const knockoutMatches = getResolvedKnockoutMatches(state)
     .sort((a, b) => (stageRank[a.stage] ?? 1) - (stageRank[b.stage] ?? 1) || String(a.id).localeCompare(String(b.id)));
   for (const match of knockoutMatches) {
     const winner = getMatchWinner(match);
@@ -1134,6 +1132,22 @@ export function getTeamProgress(state = createEmptyState()) {
   }
 
   return progress;
+}
+
+function getResolvedKnockoutMatches(state) {
+  const customAndFixtureMatches = getAllMatches(state).filter((match) => match.stage !== "group" && isCompletedMatch(match));
+  const existingKeys = new Set(customAndFixtureMatches.map(bracketMatchKey).filter(Boolean));
+  const officialMatches = getKnockoutBracket(state).rounds.flatMap((round) =>
+    round.matches
+      .map((match) => ({
+        ...match,
+        home: match.slots[0]?.team || "",
+        away: match.slots[1]?.team || "",
+      }))
+      .filter((match) => match.home && match.away && isCompletedMatch(match)),
+  );
+
+  return [...customAndFixtureMatches, ...officialMatches.filter((match) => !existingKeys.has(match.id))];
 }
 
 export function getNationPointStandings(state = createEmptyState()) {
@@ -1445,6 +1459,42 @@ function getBracketMatchWinners(state) {
     if (key && winner) winners[key] = winner;
   }
   return winners;
+}
+
+function resolveBracketMatch(match, stage, state, standings, matchWinners, advancementStatuses) {
+  const slots = match.slots.map((slot) => resolveBracketSlot(slot, standings, matchWinners, advancementStatuses));
+  const result = bracketMatchResult(state, match.id);
+  const winner = bracketResultWinner(result, slots);
+  if (winner) matchWinners[match.id] = winner;
+
+  return {
+    id: match.id,
+    stage,
+    date: knockoutMatchDates[match.id] ?? "",
+    title: `Match ${match.id.slice(1)}`,
+    homeScore: result?.homeScore,
+    awayScore: result?.awayScore,
+    status: result?.status || "scheduled",
+    wentToPens: Boolean(result?.wentToPens),
+    penaltyWinner: result?.penaltyWinner || "",
+    winner,
+    slots,
+  };
+}
+
+function bracketMatchResult(state, matchId) {
+  const direct = state.matches?.[matchId];
+  if (direct) return direct;
+  return state.customMatches.find((match) => bracketMatchKey(match) === matchId) ?? null;
+}
+
+function bracketResultWinner(result, slots) {
+  if (!result || result.status !== "final" || !hasScore(result.homeScore) || !hasScore(result.awayScore)) return "";
+  const homeScore = Number(result.homeScore);
+  const awayScore = Number(result.awayScore);
+  if (homeScore > awayScore) return slots[0]?.team || "";
+  if (awayScore > homeScore) return slots[1]?.team || "";
+  return result.wentToPens ? result.penaltyWinner || "" : "";
 }
 
 function bracketMatchKey(match) {

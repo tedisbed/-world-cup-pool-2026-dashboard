@@ -1037,25 +1037,37 @@ function bracketMatch(match) {
         <em>${escapeHtml(formatDate(match.date))}</em>
       </div>
       <div class="bracket-slot-list">
-        ${match.slots.map(bracketSlot).join("")}
+        ${match.slots.map((slot, index) => bracketSlot(slot, index, match)).join("")}
       </div>
     </article>
   `;
 }
 
-function bracketSlot(slot) {
+function bracketSlot(slot, index, match) {
   const hasTeam = Boolean(slot.team);
   const advancement = slot.advancementStatus;
+  const complete = bracketMatchComplete(match);
+  const winner = complete && hasTeam && slot.team === match.winner;
+  const score = bracketSlotScore(match, index);
   return `
-    <div class="bracket-slot ${hasTeam ? "filled" : ""} ${advancement ? `advancement-${escapeHtml(advancement.tone)}` : ""}">
+    <div class="bracket-slot ${hasTeam ? "filled" : ""} ${winner ? "winner" : ""} ${complete && hasTeam && !winner ? "loser" : ""} ${advancement ? `advancement-${escapeHtml(advancement.tone)}` : ""}">
       <span class="bracket-seed">${escapeHtml(bracketSeedLabel(slot, hasTeam))}</span>
       <strong>${escapeHtml(slot.team || slot.label)}</strong>
+      ${complete ? `<span class="bracket-score">${escapeHtml(score)}</span>` : ""}
       <div class="bracket-slot-meta">
-        ${advancement ? `<span class="advance-badge ${escapeHtml(advancement.tone)}">${escapeHtml(advancement.label)}</span>` : `<span>Pending</span>`}
+        ${winner ? `<span class="advance-badge confirmed">Winner</span>` : advancement ? `<span class="advance-badge ${escapeHtml(advancement.tone)}">${escapeHtml(advancement.label)}</span>` : `<span>Pending</span>`}
         ${slot.owner ? `<span class="owner-chip" style="--owner-color:${ownerColor(slot.owner)}">${escapeHtml(slot.owner)}</span>` : ""}
       </div>
     </div>
   `;
+}
+
+function bracketMatchComplete(match) {
+  return match.status === "final" && scoreValue(match.homeScore) !== "" && scoreValue(match.awayScore) !== "";
+}
+
+function bracketSlotScore(match, index) {
+  return index === 0 ? scoreValue(match.homeScore) : scoreValue(match.awayScore);
 }
 
 function bracketSeedLabel(slot, hasTeam) {

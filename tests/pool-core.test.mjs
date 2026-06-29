@@ -167,6 +167,25 @@ test("knockout bracket fills group source slots from current standings leaders",
   assert.equal(match86.slots[0].team, "Argentina");
 });
 
+test("knockout bracket exposes scores and advances official bracket winners", () => {
+  const state = createEmptyState();
+  state.matches["g-j-01"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches.m86 = { homeScore: 2, awayScore: 0, status: "final" };
+
+  const bracket = getKnockoutBracket(state);
+  const roundOf32 = bracket.rounds.find((round) => round.stage === "r32");
+  const roundOf16 = bracket.rounds.find((round) => round.stage === "r16");
+  const match86 = roundOf32.matches.find((match) => match.id === "m86");
+  const match95 = roundOf16.matches.find((match) => match.id === "m95");
+
+  assert.equal(match86.homeScore, 2);
+  assert.equal(match86.awayScore, 0);
+  assert.equal(match86.status, "final");
+  assert.equal(match86.winner, "Argentina");
+  assert.equal(match95.slots[0].label, "Winner Match 86");
+  assert.equal(match95.slots[0].team, "Argentina");
+});
+
 test("group advancement statuses distinguish confirmed and projected outcomes", () => {
   const state = createEmptyState();
   state.matches["g-a-01"] = { homeScore: 2, awayScore: 0, status: "final" };
@@ -256,6 +275,34 @@ test("nation point standings split last-standing races by group and federation",
   assert.equal(concacaf.title, "CONCACAF");
   assert.equal(concacaf.points, 5);
   assert.ok(concacaf.contenders.some((row) => row.team === "Mexico"));
+});
+
+test("nation point standings eliminate official bracket losers", () => {
+  const state = createEmptyState();
+  state.matches["g-a-01"] = { homeScore: 1, awayScore: 0, status: "final" };
+  state.matches["g-a-02"] = { homeScore: 1, awayScore: 0, status: "final" };
+  state.matches["g-a-03"] = { homeScore: 0, awayScore: 2, status: "final" };
+  state.matches["g-a-04"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-a-05"] = { homeScore: 0, awayScore: 3, status: "final" };
+  state.matches["g-a-06"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-b-01"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-b-02"] = { homeScore: 0, awayScore: 3, status: "final" };
+  state.matches["g-b-03"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-b-04"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-b-05"] = { homeScore: 2, awayScore: 0, status: "final" };
+  state.matches["g-b-06"] = { homeScore: 1, awayScore: 0, status: "final" };
+  state.matches.m73 = { homeScore: 1, awayScore: 2, status: "final" };
+
+  const standings = getNationPointStandings(state);
+  const groupA = standings.groupRows.find((row) => row.key === "A");
+  const caf = standings.federationRows.find((row) => row.key === "CAF");
+  const groupSouthAfrica = groupA.contenders.find((row) => row.team === "South Africa");
+  const cafSouthAfrica = caf.contenders.find((row) => row.team === "South Africa");
+
+  assert.equal(groupSouthAfrica.alive, false);
+  assert.equal(groupSouthAfrica.label, "Lost Round of 32");
+  assert.equal(cafSouthAfrica.alive, false);
+  assert.equal(cafSouthAfrica.label, "Lost Round of 32");
 });
 
 test("scoreless tracker keeps scoreless teams ahead of teams that have scored", () => {
